@@ -9,7 +9,7 @@ export default defineConfig(
   {
     languageOptions: {
       parserOptions: {
-        projectService: { allowDefaultProject: ["*.js", "*.config.ts"] },
+        projectService: { allowDefaultProject: ["*.js", "*.mjs", "*.config.ts"] },
         tsconfigRootDir: import.meta.dirname,
       },
     },
@@ -23,7 +23,7 @@ export default defineConfig(
     rules: { "no-console": "off" },
   },
   {
-    files: ["**/*.js"],
+    files: ["**/*.js", "**/*.mjs"],
     extends: [tseslint.configs.disableTypeChecked],
   },
 );
