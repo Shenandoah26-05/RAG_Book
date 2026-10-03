@@ -21,14 +21,25 @@ pnpm test
 
 ## Scripts
 
-| Script           | What it does                              |
-| ---------------- | ----------------------------------------- |
-| `pnpm dev`       | Run `src/index.ts` with tsx in watch mode |
-| `pnpm build`     | Compile to `dist/` with tsc               |
-| `pnpm typecheck` | Type-check without emitting (strict mode) |
-| `pnpm lint`      | ESLint                                    |
-| `pnpm test`      | Run vitest once                           |
-| `pnpm format`    | Format everything with Prettier           |
+| Script            | What it does                                    |
+| ----------------- | ----------------------------------------------- |
+| `pnpm dev`        | Run `src/index.ts` with tsx in watch mode       |
+| `pnpm build`      | Compile to `dist/` with tsc                     |
+| `pnpm typecheck`  | Type-check without emitting (strict mode)       |
+| `pnpm lint`       | ESLint                                          |
+| `pnpm test`       | Run vitest once                                 |
+| `pnpm format`     | Format everything with Prettier                 |
+| `pnpm deps:check` | Check the layer rules in `docs/architecture.md` |
+
+## Commits
+
+`pnpm install` activates Git hooks (husky):
+
+- **pre-commit**: lint-staged runs ESLint and Prettier on staged files.
+- **commit-msg**: commitlint requires [Conventional Commits](https://www.conventionalcommits.org),
+  e.g. `feat(core): add chunk types`, `fix: handle empty page`, `chore: bump deps`.
+
+`console.log` is banned outside `src/cli`; use the Logger.
 
 ## Tooling at a glance
 
