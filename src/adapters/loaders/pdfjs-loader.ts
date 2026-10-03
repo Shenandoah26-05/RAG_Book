@@ -1,76 +1,11 @@
-import { createHash } from "node:crypto";
-import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { getDocument, VerbosityLevel } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { z } from "zod";
-import { makeDocId } from "../../core/index.js";
-import type { DocumentLoader, Page, ParsedDocument, TextItem } from "../../core/index.js";
+import type { DocumentLoader, ParsedDocument } from "../../core/index.js";
 import { RagError } from "../../shared/index.js";
-
-/** Pages are joined with a blank line in `ParsedDocument.text`. */
-const PAGE_SEPARATOR = "\n\n";
-
-/** The parts of a pdf.js text item that we use. */
-export interface RawTextItem {
-  readonly str: string;
-  /** [scaleX, skewY, skewX, scaleY, x, y]: how the text is placed on the page. */
-  readonly transform: readonly number[];
-  readonly width: number;
-  /** True when this item ends a line. */
-  readonly hasEOL: boolean;
-  readonly fontName: string;
-}
-
-export interface FontInfo {
-  readonly name: string;
-  readonly isBold: boolean;
-}
-
-const round2 = (n: number): number => Math.round(n * 100) / 100;
-
-/**
- * Builds one page from pdf.js text items. The text is each item's string, plus a newline after an
- * item that ends a line. pdf.js marks line ends on separate empty items, which add a newline but
- * are not kept as items. `offset` is where the page starts in the document's text.
- */
-export function buildPage(
-  number: number,
-  rawItems: readonly RawTextItem[],
-  fontOf: (fontId: string) => FontInfo,
-  offset: number,
-): Page {
-  let text = "";
-  const items: TextItem[] = [];
-
-  for (const raw of rawItems) {
-    if (raw.str !== "") {
-      const font = fontOf(raw.fontName);
-      const start = offset + text.length;
-      items.push({
-        text: raw.str,
-        x: round2(raw.transform[4] ?? 0),
-        y: round2(raw.transform[5] ?? 0),
-        width: round2(raw.width),
-        fontSize: round2(Math.hypot(raw.transform[0] ?? 0, raw.transform[1] ?? 0)),
-        fontName: font.name,
-        isBold: font.isBold,
-        span: { start, end: start + raw.str.length },
-      });
-      text += raw.str;
-    }
-    if (raw.hasEOL) text += "\n";
-  }
-  return { number, text, span: { start: offset, end: offset + text.length }, items };
-}
-
-const pdfInfo = z.object({ Title: z.string().optional() });
-
-/** The document's own title if it has one, otherwise the file name without its extension. */
-export function pickTitle(info: unknown, filePath: string): string {
-  const title = pdfInfo.safeParse(info).data?.Title?.trim();
-  return title === undefined || title === "" ? path.parse(filePath).name : title;
-}
+import { DocumentAssembler, readSourceFile } from "./pdf-pages.js";
+import type { FontInfo, RawTextItem } from "./pdf-pages.js";
 
 const fontObject = z.object({ name: z.string().optional(), bold: z.boolean().optional() });
 const BOLD_NAME = /bold|black|heavy/i;
@@ -109,18 +44,12 @@ function standardFontDataUrl(): string {
   return standardFontsDir;
 }
 
-/** Reads PDFs with pdf.js, page by page, keeping every text item with its font. */
+/** Reads PDFs with pdf.js, page by page, keeping every text item with its real font. */
 export class PdfJsLoader implements DocumentLoader {
   readonly name = "pdfjs";
 
   async load(filePath: string): Promise<ParsedDocument> {
-    let bytes: Buffer;
-    try {
-      bytes = await readFile(filePath);
-    } catch (cause) {
-      throw new RagError("INGESTION_FAILED", `Cannot read ${filePath}`, { cause });
-    }
-    const sha256 = createHash("sha256").update(bytes).digest("hex");
+    const { bytes, sha256 } = await readSourceFile(filePath);
 
     let task: ReturnType<typeof getDocument> | undefined;
     try {
@@ -132,8 +61,7 @@ export class PdfJsLoader implements DocumentLoader {
       const pdf = await task.promise;
       const metadata = await pdf.getMetadata();
 
-      const pages: Page[] = [];
-      let offset = 0;
+      const assembler = new DocumentAssembler();
       for (let number = 1; number <= pdf.numPages; number++) {
         const pdfPage = await pdf.getPage(number);
         const content = await pdfPage.getTextContent();
@@ -151,26 +79,14 @@ export class PdfJsLoader implements DocumentLoader {
           }
         }
 
-        const page = buildPage(
+        assembler.addPage(
           number,
           raw,
           (fontId) => fonts.get(fontId) ?? { name: fontId, isBold: false },
-          offset,
         );
-        pages.push(page);
-        offset = page.span.end + PAGE_SEPARATOR.length;
         pdfPage.cleanup();
       }
-
-      return {
-        id: makeDocId(sha256),
-        title: pickTitle(metadata.info, filePath),
-        pageCount: pages.length,
-        sha256,
-        text: pages.map((page) => page.text).join(PAGE_SEPARATOR),
-        pages,
-        sections: [],
-      };
+      return assembler.build({ filePath, sha256, info: metadata.info });
     } catch (cause) {
       throw new RagError("INGESTION_FAILED", `Cannot extract text from ${filePath}`, { cause });
     } finally {

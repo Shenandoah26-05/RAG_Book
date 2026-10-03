@@ -5,7 +5,13 @@ import type { RagConfig } from "./schema.js";
  * an experiment variant can be a three-line file.
  */
 export const DEFAULT_CONFIG: RagConfig = {
-  ingestion: { loader: "pdfjs", cleaners: ["unicode", "dehyphenate", "headers-footers"] },
+  // Order matters: unicode first so later cleaners see normal text (and soft hyphens at line ends
+  // become real hyphens); page numbers and headers before de-hyphenation so nothing sits between
+  // the two halves of a split word.
+  ingestion: {
+    loader: "pdfjs",
+    cleaners: ["unicode", "page-numbers", "headers-footers", "dehyphenate"],
+  },
   chunking: { strategy: "recursive", maxTokens: 400, overlapTokens: 60 },
   embedding: { provider: "ollama", model: "all-minilm", batchSize: 32 },
   vectorStore: { type: "in-memory", dir: "data/index" },

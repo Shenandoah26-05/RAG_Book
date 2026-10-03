@@ -1,0 +1,113 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Count 6 /Kids [7 0 R 9 0 R 11 0 R 13 0 R 15 0 R 17 0 R] >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+5 0 obj
+<< /Title (The RAG Handbook) /Producer (RAG Book fixture generator) >>
+endobj
+6 0 obj
+<< /Length 316 >>
+stream
+BT /F1 9 Tf 72 760 Td (The RAG Handbook) Tj ET
+BT /F2 24 Tf 72 700 Td (Chapter 1: Noise) Tj ET
+BT /F1 12 Tf 72 660 Td (Cleaning removes extraction noise before chunking.) Tj ET
+BT /F1 12 Tf 72 642 Td (Words are split with a hyph-) Tj ET
+BT /F1 12 Tf 72 624 Td (en across lines.) Tj ET
+BT /F1 9 Tf 300 40 Td (3) Tj ET
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 6 0 R /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> >>
+endobj
+8 0 obj
+<< /Length 330 >>
+stream
+BT /F1 9 Tf 72 760 Td (The RAG Handbook) Tj ET
+BT /F2 16 Tf 72 700 Td (1.1 Details) Tj ET
+BT /F1 12 Tf 72 670 Td (The header and the page number repeat on every page.) Tj ET
+BT /F1 12 Tf 72 652 Td (Embeddings turn sentences into vec-) Tj ET
+BT /F1 12 Tf 72 634 Td (tors that can be compared.) Tj ET
+BT /F1 9 Tf 300 40 Td (4) Tj ET
+endstream
+endobj
+9 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 8 0 R /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> >>
+endobj
+10 0 obj
+<< /Length 138 >>
+stream
+BT /F1 9 Tf 72 760 Td (The RAG Handbook) Tj ET
+BT /F1 12 Tf 72 700 Td (Body text of the third page.) Tj ET
+BT /F1 9 Tf 300 40 Td (5) Tj ET
+endstream
+endobj
+11 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 10 0 R /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> >>
+endobj
+12 0 obj
+<< /Length 139 >>
+stream
+BT /F1 9 Tf 72 760 Td (The RAG Handbook) Tj ET
+BT /F1 12 Tf 72 700 Td (Body text of the fourth page.) Tj ET
+BT /F1 9 Tf 300 40 Td (6) Tj ET
+endstream
+endobj
+13 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 12 0 R /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> >>
+endobj
+14 0 obj
+<< /Length 138 >>
+stream
+BT /F1 9 Tf 72 760 Td (The RAG Handbook) Tj ET
+BT /F1 12 Tf 72 700 Td (Body text of the fifth page.) Tj ET
+BT /F1 9 Tf 300 40 Td (7) Tj ET
+endstream
+endobj
+15 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 14 0 R /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> >>
+endobj
+16 0 obj
+<< /Length 138 >>
+stream
+BT /F1 9 Tf 72 760 Td (The RAG Handbook) Tj ET
+BT /F1 12 Tf 72 700 Td (Body text of the sixth page.) Tj ET
+BT /F1 9 Tf 300 40 Td (8) Tj ET
+endstream
+endobj
+17 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 16 0 R /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> >>
+endobj
+xref
+0 18
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000149 00000 n 
+0000000219 00000 n 
+0000000294 00000 n 
+0000000380 00000 n 
+0000000747 00000 n 
+0000000883 00000 n 
+0000001264 00000 n 
+0000001400 00000 n 
+0000001590 00000 n 
+0000001728 00000 n 
+0000001919 00000 n 
+0000002057 00000 n 
+0000002247 00000 n 
+0000002385 00000 n 
+0000002575 00000 n 
+trailer
+<< /Size 18 /Root 1 0 R /Info 5 0 R >>
+startxref
+2713
+%%EOF
