@@ -12,11 +12,12 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings 0",
     "test": "vitest run",
+    "deps:check": "depcruise src --config .dependency-cruiser.mjs",
     "format": "prettier --write .",
     "prepare": "husky"
   },
   "lint-staged": {
-    "*.{ts,js}": [
+    "*.{ts,js,mjs}": [
       "eslint --fix --max-warnings 0",
       "prettier --write"
     ],
@@ -27,6 +28,7 @@
     "@commitlint/config-conventional": "^21.2.3",
     "@eslint/js": "^10.0.1",
     "@types/node": "^22.20.5",
+    "dependency-cruiser": "^18.5.0",
     "eslint": "^10.11.0",
     "husky": "^9.1.7",
     "lint-staged": "^17.6.0",

@@ -21,14 +21,15 @@ pnpm test
 
 ## Scripts
 
-| Script           | What it does                              |
-| ---------------- | ----------------------------------------- |
-| `pnpm dev`       | Run `src/index.ts` with tsx in watch mode |
-| `pnpm build`     | Compile to `dist/` with tsc               |
-| `pnpm typecheck` | Type-check without emitting (strict mode) |
-| `pnpm lint`      | ESLint                                    |
-| `pnpm test`      | Run vitest once                           |
-| `pnpm format`    | Format everything with Prettier           |
+| Script            | What it does                                    |
+| ----------------- | ----------------------------------------------- |
+| `pnpm dev`        | Run `src/index.ts` with tsx in watch mode       |
+| `pnpm build`      | Compile to `dist/` with tsc                     |
+| `pnpm typecheck`  | Type-check without emitting (strict mode)       |
+| `pnpm lint`       | ESLint                                          |
+| `pnpm test`       | Run vitest once                                 |
+| `pnpm format`     | Format everything with Prettier                 |
+| `pnpm deps:check` | Check the layer rules in `docs/architecture.md` |
 
 ## Commits
 
