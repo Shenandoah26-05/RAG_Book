@@ -19,7 +19,7 @@ export default defineConfig(
     },
   },
   {
-    files: ["src/cli/**"],
+    files: ["src/cli/**", "scripts/**"],
     rules: { "no-console": "off" },
   },
   {
