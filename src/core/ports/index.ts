@@ -1,2 +1,2 @@
 // Public API of src/core/ports. Named exports only.
-export {};
+export type { ModelHost } from "./model-host.js";

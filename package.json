@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings 0",
     "test": "vitest run",
+    "doctor": "tsx src/cli/doctor.ts",
     "deps:check": "depcruise src --config .dependency-cruiser.mjs",
     "format": "prettier --write .",
     "prepare": "husky"
