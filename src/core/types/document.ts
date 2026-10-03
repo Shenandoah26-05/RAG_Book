@@ -9,12 +9,32 @@ export interface CharSpan {
   readonly end: number;
 }
 
+/**
+ * A fragment of text as the PDF stores it: a run of characters in one font at one position. Books
+ * are not stored as paragraphs, and heading detection needs the font size and weight.
+ */
+export interface TextItem {
+  readonly text: string;
+  /** Position of the start of the text, in PDF points from the bottom-left corner of the page. */
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly fontSize: number;
+  /** The font's own name, e.g. "Times-Bold". */
+  readonly fontName: string;
+  readonly isBold: boolean;
+  /** Where `text` sits inside `ParsedDocument.text`. */
+  readonly span: CharSpan;
+}
+
 export interface Page {
   /** 1-based, as printed in the book's PDF viewer. */
   readonly number: number;
   readonly text: string;
   /** Where this page's text sits inside `ParsedDocument.text`. */
   readonly span: CharSpan;
+  /** The text items the page was built from, in reading order. Empty if the loader has none. */
+  readonly items: readonly TextItem[];
 }
 
 /** A node in the document's heading tree. */

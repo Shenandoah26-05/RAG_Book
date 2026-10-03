@@ -1,0 +1,79 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Count 4 /Kids [7 0 R 9 0 R 11 0 R 13 0 R] >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+5 0 obj
+<< /Title (Sample Book) /Producer (RAG Book fixture generator) >>
+endobj
+6 0 obj
+<< /Length 234 >>
+stream
+BT /F2 24 Tf 72 700 Td (Chapter 1: Introduction) Tj ET
+BT /F1 12 Tf 72 660 Td (Retrieval-augmented generation combines search with a language model.) Tj ET
+BT /F1 12 Tf 72 642 Td (This sample book exists to test the PDF loader.) Tj ET
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 6 0 R /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> >>
+endobj
+8 0 obj
+<< /Length 243 >>
+stream
+BT /F2 16 Tf 72 700 Td (1.1 Background) Tj ET
+BT /F1 12 Tf 72 670 Td (Embeddings turn sentences into vec-) Tj ET
+BT /F1 12 Tf 72 652 Td (tors that can be compared.) Tj ET
+BT /F1 12 Tf 72 622 Td (Chunking splits a document into passages.) Tj ET
+endstream
+endobj
+9 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 8 0 R /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> >>
+endobj
+10 0 obj
+<< /Length 110 >>
+stream
+BT /F2 24 Tf 72 700 Td (Chapter 2: Methods) Tj ET
+BT /F1 12 Tf 72 660 Td (Each page keeps its own text.) Tj ET
+endstream
+endobj
+11 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 10 0 R /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> >>
+endobj
+12 0 obj
+<< /Length 0 >>
+stream
+
+endstream
+endobj
+13 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 12 0 R /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> >>
+endobj
+xref
+0 14
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000135 00000 n 
+0000000205 00000 n 
+0000000280 00000 n 
+0000000361 00000 n 
+0000000646 00000 n 
+0000000782 00000 n 
+0000001076 00000 n 
+0000001212 00000 n 
+0000001374 00000 n 
+0000001512 00000 n 
+0000001562 00000 n 
+trailer
+<< /Size 14 /Root 1 0 R /Info 5 0 R >>
+startxref
+1700
+%%EOF

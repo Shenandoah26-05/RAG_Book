@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings 0",
     "test": "vitest run",
+    "doctor": "tsx src/cli/doctor.ts",
     "deps:check": "depcruise src --config .dependency-cruiser.mjs",
     "format": "prettier --write .",
     "prepare": "husky"
@@ -39,6 +40,7 @@
     "vitest": "^3.2.7"
   },
   "dependencies": {
+    "pdfjs-dist": "^6.3.289",
     "zod": "^4.6.5"
   }
 }

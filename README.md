@@ -29,10 +29,12 @@ pnpm test
 | `pnpm lint`       | ESLint                                          |
 | `pnpm test`       | Run vitest once                                 |
 | `pnpm format`     | Format everything with Prettier                 |
+| `pnpm run doctor` | Check that Ollama is running and has the models |
 | `pnpm deps:check` | Check the layer rules in `docs/architecture.md` |
 
 ## Documentation
 
+- [docs/setup.md](docs/setup.md): install Ollama, pull the models, run `pnpm run doctor`.
 - [docs/architecture.md](docs/architecture.md): layers and import rules.
 - [docs/adr/](docs/adr/): architecture decision records. Start with
   [ADR-0001: ports and adapters](docs/adr/0001-ports-and-adapters.md). Copy
