@@ -31,6 +31,13 @@ pnpm test
 | `pnpm format`     | Format everything with Prettier                 |
 | `pnpm deps:check` | Check the layer rules in `docs/architecture.md` |
 
+## Documentation
+
+- [docs/architecture.md](docs/architecture.md): layers and import rules.
+- [docs/adr/](docs/adr/): architecture decision records. Start with
+  [ADR-0001: ports and adapters](docs/adr/0001-ports-and-adapters.md). Copy
+  [0000-template.md](docs/adr/0000-template.md) for new ones.
+
 ## Commits
 
 `pnpm install` activates Git hooks (husky):
