@@ -1,5 +1,8 @@
 import type { DocId } from "./ids.js";
 
+/** Pages are joined with this in `ParsedDocument.text`, so no span ever crosses a page boundary. */
+export const PAGE_SEPARATOR = "\n\n";
+
 /**
  * A half-open range of characters `[start, end)` in `ParsedDocument.text`.
  * Spans are what let evaluation score any chunker fairly, and let the UI highlight cited text.

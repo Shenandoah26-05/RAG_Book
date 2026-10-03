@@ -2,14 +2,11 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
-import { makeDocId } from "../../core/index.js";
+import { makeDocId, PAGE_SEPARATOR } from "../../core/index.js";
 import type { Page, ParsedDocument, TextItem } from "../../core/index.js";
 import { RagError } from "../../shared/index.js";
 
 // Pieces shared by every PDF loader, so that two loaders differ only in how they extract text.
-
-/** Pages are joined with a blank line in `ParsedDocument.text`. */
-export const PAGE_SEPARATOR = "\n\n";
 
 /** The parts of a pdf.js text item that we use. */
 export interface RawTextItem {
