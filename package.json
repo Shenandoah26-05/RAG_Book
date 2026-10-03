@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings 0",
     "test": "vitest run",
+    "compare:extractors": "tsx scripts/compare-extractors.ts",
     "doctor": "tsx src/cli/doctor.ts",
     "deps:check": "depcruise src --config .dependency-cruiser.mjs",
     "format": "prettier --write .",
@@ -41,6 +42,7 @@
   },
   "dependencies": {
     "pdfjs-dist": "^6.3.289",
+    "unpdf": "^1.8.1",
     "zod": "^4.6.5"
   }
 }

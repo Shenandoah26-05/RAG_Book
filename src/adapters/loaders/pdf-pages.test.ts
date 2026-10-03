@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { buildPage, pickTitle } from "./pdfjs-loader.js";
-import type { FontInfo, RawTextItem } from "./pdfjs-loader.js";
+import { buildPage, pickTitle } from "./pdf-pages.js";
+import type { FontInfo, RawTextItem } from "./pdf-pages.js";
 
 const REGULAR: FontInfo = { name: "Helvetica", isBold: false };
 const BOLD: FontInfo = { name: "Helvetica-Bold", isBold: true };
