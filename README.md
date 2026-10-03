@@ -30,6 +30,16 @@ pnpm test
 | `pnpm test`      | Run vitest once                           |
 | `pnpm format`    | Format everything with Prettier           |
 
+## Commits
+
+`pnpm install` activates Git hooks (husky):
+
+- **pre-commit**: lint-staged runs ESLint and Prettier on staged files.
+- **commit-msg**: commitlint requires [Conventional Commits](https://www.conventionalcommits.org),
+  e.g. `feat(core): add chunk types`, `fix: handle empty page`, `chore: bump deps`.
+
+`console.log` is banned outside `src/cli`; use the Logger.
+
 ## Tooling at a glance
 
 - **tsc** type-checks and compiles (`typecheck`, `build`).
