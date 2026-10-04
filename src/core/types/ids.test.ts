@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { contentHash, makeChunkId, makeDocId } from "./ids.js";
+import { contentHash, makeChunkId } from "./ids.js";
 import type { ChunkId, DocId } from "./ids.js";
+
+// Core cannot import `shared`, where document ids are made, so these tests use plain branded ids.
+// How a real DocId is made and checked is tested in src/shared/doc-id.test.ts.
+const docId = (value: string): DocId => value as DocId;
 
 describe("contentHash", () => {
   it("is a 64-character lowercase hex string", () => {
@@ -21,18 +25,17 @@ describe("contentHash", () => {
   });
 });
 
-describe("makeDocId", () => {
-  it("is the same for the same file hash and differs for another", () => {
-    expect(makeDocId("abc")).toBe(makeDocId("abc"));
-    expect(makeDocId("abc")).not.toBe(makeDocId("abd"));
-  });
-});
-
 describe("makeChunkId", () => {
-  const docId = makeDocId("abc");
-  const base = { docId, strategy: "recursive", charStart: 0, charEnd: 5, text: "hello" };
+  const base = {
+    docId: docId("doc-1"),
+    strategy: "recursive",
+    charStart: 0,
+    charEnd: 5,
+    text: "hello",
+  };
 
-  it("is stable for identical input", () => {
+  it("is a 64-character hex string, stable for identical input", () => {
+    expect(makeChunkId(base)).toMatch(/^[0-9a-f]{64}$/);
     expect(makeChunkId(base)).toBe(makeChunkId({ ...base }));
   });
 
@@ -41,7 +44,7 @@ describe("makeChunkId", () => {
     ["charStart", { charStart: 1 }],
     ["charEnd", { charEnd: 6 }],
     ["text", { text: "world" }],
-    ["docId", { docId: makeDocId("other") }],
+    ["docId", { docId: docId("doc-2") }],
   ])("changes when %s changes", (_name, override) => {
     expect(makeChunkId({ ...base, ...override })).not.toBe(makeChunkId(base));
   });

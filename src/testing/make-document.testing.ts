@@ -1,7 +1,8 @@
 // Test helpers for code that processes documents (cleaners, section detection, ...). Not part of the
 // build (see tsconfig.build.json).
 import { expect } from "vitest";
-import { makeDocId, PAGE_SEPARATOR } from "../core/index.js";
+import { PAGE_SEPARATOR } from "../core/index.js";
+import { makeDocId } from "../shared/index.js";
 import type { Page, ParsedDocument, TextItem } from "../core/index.js";
 
 export interface MakeDocumentOptions {

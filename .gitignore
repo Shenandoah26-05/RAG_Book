@@ -3,3 +3,5 @@ dist
 coverage
 .env
 *.log
+# raw books, processed documents, indexes and caches are generated; keep them out of git
+data/

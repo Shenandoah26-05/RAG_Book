@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ParsedDocument, TextItem } from "../src/core/index.js";
-import { makeDocId } from "../src/core/index.js";
+import { makeDocId } from "../src/shared/index.js";
 import {
   compareDocuments,
   firstDifference,

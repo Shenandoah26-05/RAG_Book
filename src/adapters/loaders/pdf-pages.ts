@@ -2,9 +2,9 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
-import { makeDocId, PAGE_SEPARATOR } from "../../core/index.js";
+import { PAGE_SEPARATOR } from "../../core/index.js";
 import type { Page, ParsedDocument, TextItem } from "../../core/index.js";
-import { RagError } from "../../shared/index.js";
+import { makeDocId, RagError } from "../../shared/index.js";
 
 // Pieces shared by every PDF loader, so that two loaders differ only in how they extract text.
 

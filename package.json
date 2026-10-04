@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings 0",
     "test": "vitest run",
+    "ingest": "tsx src/cli/ingest.ts",
     "export:markdown": "tsx scripts/export-markdown.ts",
     "compare:extractors": "tsx scripts/compare-extractors.ts",
     "doctor": "tsx src/cli/doctor.ts",
@@ -44,6 +45,7 @@
   "dependencies": {
     "pdfjs-dist": "^6.3.289",
     "unpdf": "^1.8.1",
+    "uuid": "^14.0.2",
     "zod": "^4.6.5"
   }
 }

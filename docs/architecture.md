@@ -13,7 +13,7 @@ flowchart TD
   orch["pipeline/ · eval/<br/>orchestration, ports only"]
   impl["strategies/ · adapters/<br/>implementations"]
   core["core/<br/>domain types + port interfaces"]
-  side["shared/ · config/<br/>logger, errors, trace · config schema"]
+  side["shared/ · config/<br/>logger, errors, trace, doc ids · config schema"]
 
   entry --> comp
   comp --> orch
@@ -38,7 +38,7 @@ layer may use `shared/` and `config/`.
 | `eval/`        | Experiments and metrics                                                       | same as `pipeline/`                                           |
 | `composition/` | The only place that turns config into objects (`new OllamaEmbedder(...)`)     | everything                                                    |
 | `config/`      | zod schema and loading of `rag.config.json`                                   | `core/`, `shared/`                                            |
-| `shared/`      | Logger, errors, trace                                                         | `core/`, `shared/`                                            |
+| `shared/`      | Logger, errors, trace, document ids (uses the `uuid` package), file hashing   | `core/`, `shared/`                                            |
 | `cli/`         | Parse arguments, call the composition root, print. The only place for console | everything except concrete classes (via `composition/`)       |
 
 ## Rules enforced automatically

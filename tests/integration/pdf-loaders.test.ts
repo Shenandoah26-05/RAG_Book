@@ -6,9 +6,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { beforeAll, describe, expect, it } from "vitest";
 import { PdfJsLoader, UnpdfLoader } from "../../src/adapters/index.js";
-import { makeDocId } from "../../src/core/index.js";
 import type { DocumentLoader, ParsedDocument } from "../../src/core/index.js";
-import { RagError } from "../../src/shared/index.js";
+import { makeDocId, RagError } from "../../src/shared/index.js";
 
 const FIXTURE = fileURLToPath(new URL("../fixtures/sample.pdf", import.meta.url));
 

@@ -1,4 +1,5 @@
-import type { Cleaner } from "../core/index.js";
+import { PdfJsLoader, UnpdfLoader } from "../adapters/index.js";
+import type { Cleaner, DocumentLoader } from "../core/index.js";
 import { RagError } from "../shared/index.js";
 import {
   CleaningChain,
@@ -10,6 +11,26 @@ import {
 
 // Registries map a name from config to a new object. Adding a strategy is one new class and one
 // line here.
+
+const LOADERS: ReadonlyMap<string, () => DocumentLoader> = new Map<string, () => DocumentLoader>([
+  ["pdfjs", () => new PdfJsLoader()],
+  ["unpdf", () => new UnpdfLoader()],
+]);
+
+/** The names accepted in `ingestion.loader`. */
+export const loaderNames = (): readonly string[] => [...LOADERS.keys()];
+
+/** Builds the loader named in `ingestion.loader`. Throws CONFIG_INVALID if there is no such loader. */
+export function buildLoader(name: string): DocumentLoader {
+  const create = LOADERS.get(name);
+  if (create === undefined) {
+    throw new RagError(
+      "CONFIG_INVALID",
+      `Unknown loader "${name}" in ingestion.loader. Known loaders: ${loaderNames().join(", ")}`,
+    );
+  }
+  return create();
+}
 
 const CLEANERS: ReadonlyMap<string, () => Cleaner> = new Map<string, () => Cleaner>([
   ["unicode", () => new UnicodeCleaner()],
