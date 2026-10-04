@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { RagError } from "../../shared/index.js";
-import { makeDocument, expectConsistent, pageTexts } from "./make-document.testing.js";
+import { makeDocument, expectConsistent, pageTexts } from "../../testing/make-document.testing.js";
 import { applyEdits, editDocument } from "./page-edits.js";
 
 describe("applyEdits", () => {
@@ -134,6 +134,7 @@ describe("editDocument", () => {
           pageStart: 1,
           pageEnd: 1,
           span: { start: 0, end: 1 },
+          titleSpan: { start: 0, end: 1 },
           children: [],
         },
       ],

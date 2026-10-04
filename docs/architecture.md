@@ -53,6 +53,8 @@ layer may use `shared/` and `config/`.
 5. `shared` and `config` stay near the bottom (see the table).
 6. Cross-folder imports go through the folder's `index.ts` barrel, not its internals.
 7. No circular dependencies.
+8. `src/testing/` holds helpers for tests (they import vitest and are left out of the build). Test
+   files may import them from any layer; production code may not.
 
 Imports use the `.js` extension (`from "./x.js"`) because the project is ESM (`module: NodeNext`).
 

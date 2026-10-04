@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings 0",
     "test": "vitest run",
+    "export:markdown": "tsx scripts/export-markdown.ts",
     "compare:extractors": "tsx scripts/compare-extractors.ts",
     "doctor": "tsx src/cli/doctor.ts",
     "deps:check": "depcruise src --config .dependency-cruiser.mjs",

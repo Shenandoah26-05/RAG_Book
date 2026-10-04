@@ -21,17 +21,18 @@ pnpm test
 
 ## Scripts
 
-| Script                          | What it does                                     |
-| ------------------------------- | ------------------------------------------------ |
-| `pnpm dev`                      | Run `src/index.ts` with tsx in watch mode        |
-| `pnpm build`                    | Compile to `dist/` with tsc                      |
-| `pnpm typecheck`                | Type-check without emitting (strict mode)        |
-| `pnpm lint`                     | ESLint                                           |
-| `pnpm test`                     | Run vitest once                                  |
-| `pnpm format`                   | Format everything with Prettier                  |
-| `pnpm compare:extractors <pdf>` | Compare the two PDF loaders on a file (ADR-0002) |
-| `pnpm run doctor`               | Check that Ollama is running and has the models  |
-| `pnpm deps:check`               | Check the layer rules in `docs/architecture.md`  |
+| Script                          | What it does                                                    |
+| ------------------------------- | --------------------------------------------------------------- |
+| `pnpm dev`                      | Run `src/index.ts` with tsx in watch mode                       |
+| `pnpm build`                    | Compile to `dist/` with tsc                                     |
+| `pnpm typecheck`                | Type-check without emitting (strict mode)                       |
+| `pnpm lint`                     | ESLint                                                          |
+| `pnpm test`                     | Run vitest once                                                 |
+| `pnpm format`                   | Format everything with Prettier                                 |
+| `pnpm compare:extractors <pdf>` | Compare the two PDF loaders on a file (ADR-0002)                |
+| `pnpm export:markdown <pdf>`    | Load, clean and find sections; print an outline, write Markdown |
+| `pnpm run doctor`               | Check that Ollama is running and has the models                 |
+| `pnpm deps:check`               | Check the layer rules in `docs/architecture.md`                 |
 
 ## Documentation
 

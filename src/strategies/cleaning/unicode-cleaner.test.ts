@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { expectConsistent, makeDocument, pageTexts } from "./make-document.testing.js";
+import { expectConsistent, makeDocument, pageTexts } from "../../testing/make-document.testing.js";
 import { UnicodeCleaner } from "./unicode-cleaner.js";
 
 // Special characters by code point, so none are hidden in this file.

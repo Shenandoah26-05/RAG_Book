@@ -3,7 +3,7 @@ import type { Cleaner } from "../../core/index.js";
 import { CleaningChain } from "./cleaning-chain.js";
 import { DehyphenateCleaner } from "./dehyphenate-cleaner.js";
 import { HeaderFooterCleaner } from "./header-footer-cleaner.js";
-import { expectConsistent, makeDocument, pageTexts } from "./make-document.testing.js";
+import { expectConsistent, makeDocument, pageTexts } from "../../testing/make-document.testing.js";
 import { PageNumberCleaner } from "./page-number-cleaner.js";
 import { UnicodeCleaner } from "./unicode-cleaner.js";
 
