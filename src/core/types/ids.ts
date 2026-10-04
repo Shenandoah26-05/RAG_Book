@@ -1,13 +1,28 @@
 import { createHash } from "node:crypto";
 
+// ---------------------------------------------------------------------------------------------
+// Branded ids
+// ---------------------------------------------------------------------------------------------
+
 /**
  * A string that the compiler treats as its own type. A `ChunkId` cannot be passed where a `DocId`
  * is expected, even though both are strings at runtime. The brand exists only in the type system.
  */
 export type Brand<T, B extends string> = T & { readonly __brand: B };
 
+/**
+ * Identifies a document. A UUID derived from the document's file. Core only defines the type;
+ * `makeDocId` and `isDocId` live in `shared/doc-id.ts`, because they use the `uuid` package and
+ * core imports no third-party packages (ADR-0001).
+ */
 export type DocId = Brand<string, "DocId">;
+
+/** Identifies a chunk. A SHA-256 hash of what makes the chunk what it is, see `makeChunkId`. */
 export type ChunkId = Brand<string, "ChunkId">;
+
+// ---------------------------------------------------------------------------------------------
+// Hashing
+// ---------------------------------------------------------------------------------------------
 
 /**
  * SHA-256 (hex) of the given parts. Each part is length-prefixed before hashing, so the boundaries
@@ -21,10 +36,9 @@ export function contentHash(...parts: readonly string[]): string {
   return hash.digest("hex");
 }
 
-/** Id of a document: derived from the sha256 of its file, so re-ingesting the same file gives the same id. */
-export function makeDocId(fileSha256: string): DocId {
-  return contentHash("doc", fileSha256) as DocId;
-}
+// ---------------------------------------------------------------------------------------------
+// Chunk ids
+// ---------------------------------------------------------------------------------------------
 
 export interface ChunkIdParts {
   readonly docId: DocId;

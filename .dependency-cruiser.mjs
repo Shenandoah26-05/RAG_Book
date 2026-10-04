@@ -89,11 +89,12 @@ export default {
       to: { path: TESTING },
     },
     {
-      name: "testing-imports-only-core",
-      comment: "Test helpers build documents from core types and nothing else in the project.",
+      name: "testing-imports-only-core-and-shared",
+      comment:
+        "Test helpers build documents from core types and shared helpers (such as makeDocId) and nothing else in the project.",
       severity: "error",
       from: { path: TESTING },
-      to: { path: "^src/", pathNot: ["^src/core/", TESTING] },
+      to: { path: "^src/", pathNot: ["^src/(core|shared)/", TESTING] },
     },
     {
       name: "no-circular",

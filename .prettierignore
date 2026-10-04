@@ -1,5 +1,6 @@
 dist
 node_modules
 coverage
+data
 pnpm-lock.yaml
 RAGBook Build Board.html

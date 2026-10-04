@@ -30,9 +30,23 @@ pnpm test
 | `pnpm test`                     | Run vitest once                                                 |
 | `pnpm format`                   | Format everything with Prettier                                 |
 | `pnpm compare:extractors <pdf>` | Compare the two PDF loaders on a file (ADR-0002)                |
+| `pnpm ingest <pdf> [--force]`   | Turn a PDF into a processed document in `data/processed/`       |
 | `pnpm export:markdown <pdf>`    | Load, clean and find sections; print an outline, write Markdown |
 | `pnpm run doctor`               | Check that Ollama is running and has the models                 |
 | `pnpm deps:check`               | Check the layer rules in `docs/architecture.md`                 |
+
+## Ingesting a book
+
+```sh
+pnpm ingest data/raw/book.pdf
+```
+
+This loads the PDF, cleans it, finds its sections, and stores the result as
+`data/processed/<docId>.json`. The `docId` is a UUID computed from the hash of the file, so the
+same file always gets the same id. Running it again on
+the same file does nothing; add `--force` to process it again. The cache looks only at the file's
+hash, so after changing `ingestion.cleaners` or the section detector, run with `--force`.
+The `data/` folder is git-ignored.
 
 ## Documentation
 
