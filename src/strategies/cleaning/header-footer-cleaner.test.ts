@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { HeaderFooterCleaner } from "./header-footer-cleaner.js";
-import { expectConsistent, makeDocument, pageTexts } from "./make-document.testing.js";
+import { expectConsistent, makeDocument, pageTexts } from "../../testing/make-document.testing.js";
 
 const clean = (pages: readonly string[]): string[] => {
   const cleaned = new HeaderFooterCleaner().clean(makeDocument(pages));

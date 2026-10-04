@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_CONFIG } from "../config/index.js";
 import { RagError } from "../shared/index.js";
-import { makeDocument, pageTexts } from "../strategies/cleaning/make-document.testing.js";
+import { makeDocument, pageTexts } from "../testing/make-document.testing.js";
 import { buildCleaner, cleanerNames } from "./registries.js";
 
 const FI = String.fromCodePoint(0xfb01);

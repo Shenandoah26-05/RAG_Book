@@ -43,11 +43,15 @@ export interface Page {
 /** A node in the document's heading tree. */
 export interface Section {
   readonly title: string;
-  /** 1 for a chapter, 2 for a subsection, and so on. */
+  /** 1 for a chapter, 2 for a subsection, and so on: the depth in the tree. */
   readonly level: number;
+  /** 1-based, inclusive page range of the whole section, subsections included. */
   readonly pageStart: number;
   readonly pageEnd: number;
+  /** The heading and everything under it, up to the next heading of the same or a higher level. */
   readonly span: CharSpan;
+  /** Where the heading text itself sits; the section's body starts after it. */
+  readonly titleSpan: CharSpan;
   readonly children: readonly Section[];
 }
 

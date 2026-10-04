@@ -5,6 +5,8 @@
 
 const IMPL = "^src/(adapters|strategies)/";
 const TEST_FILE = "\\.test\\.ts$";
+/** Shared helpers for tests (src/testing). Tests may use them; production code may not. */
+const TESTING = "^src/testing/";
 
 /** @type {import('dependency-cruiser').IConfiguration} */
 export default {
@@ -15,7 +17,7 @@ export default {
         "core holds domain types and ports. It imports nothing from the rest of the project.",
       severity: "error",
       from: { path: "^src/core/" },
-      to: { path: "^src/", pathNot: "^src/core/" },
+      to: { path: "^src/", pathNot: ["^src/core/", TESTING] },
     },
     {
       name: "core-no-third-party",
@@ -29,14 +31,14 @@ export default {
       comment: "Strategies are pure algorithms: core, shared and their own folder only.",
       severity: "error",
       from: { path: "^src/strategies/" },
-      to: { path: "^src/", pathNot: "^src/(core|shared|strategies)/" },
+      to: { path: "^src/", pathNot: ["^src/(core|shared|strategies)/", TESTING] },
     },
     {
       name: "adapters-only-core",
       comment: "Adapters talk to the outside world: core, shared and their own folder only.",
       severity: "error",
       from: { path: "^src/adapters/" },
-      to: { path: "^src/", pathNot: "^src/(core|shared|adapters)/" },
+      to: { path: "^src/", pathNot: ["^src/(core|shared|adapters)/", TESTING] },
     },
     {
       name: "pipeline-eval-talk-to-ports",
@@ -58,14 +60,14 @@ export default {
       comment: "shared (logger, errors, trace) may use core types and nothing else in the project.",
       severity: "error",
       from: { path: "^src/shared/" },
-      to: { path: "^src/", pathNot: "^src/(core|shared)/" },
+      to: { path: "^src/", pathNot: ["^src/(core|shared)/", TESTING] },
     },
     {
       name: "config-imports-core-and-shared",
       comment: "config validates and loads settings. It does not know about any layer above core.",
       severity: "error",
       from: { path: "^src/config/" },
-      to: { path: "^src/", pathNot: "^src/(core|shared|config)/" },
+      to: { path: "^src/", pathNot: ["^src/(core|shared|config)/", TESTING] },
     },
     {
       name: "no-reaching-into-folders",
@@ -77,6 +79,21 @@ export default {
         path: "^src/[^/]+/.+/",
         pathNot: ["^src/$1/", "/index\\.ts$"],
       },
+    },
+    {
+      name: "testing-helpers-only-for-tests",
+      comment:
+        "src/testing holds helpers for tests (they import vitest and are left out of the build). Production code must not import them.",
+      severity: "error",
+      from: { path: "^src/", pathNot: [TESTING, TEST_FILE] },
+      to: { path: TESTING },
+    },
+    {
+      name: "testing-imports-only-core",
+      comment: "Test helpers build documents from core types and nothing else in the project.",
+      severity: "error",
+      from: { path: TESTING },
+      to: { path: "^src/", pathNot: ["^src/core/", TESTING] },
     },
     {
       name: "no-circular",

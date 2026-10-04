@@ -56,10 +56,34 @@ Findings:
    PDF. Font sizes matched too. Choosing between the two does not change what text the pipeline sees.
 2. **Only pdf.js reports bold.** unpdf reported zero bold items on documents where pdf.js found
    hundreds, and collapsed 7 to 13 real font names into 2 or 3 generic families.
-3. **pdf.js is slower but still cheap.** About 20 to 35 ms per page, so roughly 10 to 15 seconds for a
-   400-page book, paid once because ingestion results are cached (RAG-015).
+3. **pdf.js is slower but still cheap.** The table's first-run figures include start-up, so they
+   overstate it. See "Cost" below for steady-state numbers.
 4. **A scanned PDF has no text for either loader** (22 characters in 12 pages). That is not a loader
    problem. It needs OCR, which is a separate ticket.
+
+## Cost
+
+**Money: none.** Both loaders run locally on your machine, with no API calls. There is nothing to
+pay per page, whatever the size of the book. (Embeddings and answers use Ollama, which is also
+local and free; they cost time, not money.)
+
+**Time** for a 500 to 600 page book, measured by loading a 44-page deck about 12 times (528 pages,
+warmed up, one machine):
+
+| Step                             | 528 pages   | Per page |
+| -------------------------------- | ----------- | -------: |
+| Extraction with pdf.js (default) | about 5 s   |    10 ms |
+| Extraction with unpdf            | about 1.5 s |     3 ms |
+| All four cleaners (RAG-013)      | under 0.1 s |   < 1 ms |
+
+**Memory:** the process used about 450 to 500 MB in total (heap about 140 to 180 MB) during the
+run. That includes Node and pdf.js themselves; a single large book was not measured.
+
+**How far to trust this:** the test deck has about 40 text items per page. A dense typeset book page
+can have 10 to 30 times more, and extraction time grows with the number of items, so a real
+500-page book could take several times longer than the table says, plausibly 15 to 60 seconds with
+pdf.js. That is still a one-off cost, because ingestion results are cached by file hash (RAG-015).
+Treat the table as a lower bound and re-measure on the book.
 
 ## Decision
 

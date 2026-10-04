@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { expectConsistent, makeDocument, pageTexts } from "./make-document.testing.js";
+import { expectConsistent, makeDocument, pageTexts } from "../../testing/make-document.testing.js";
 import { PageNumberCleaner } from "./page-number-cleaner.js";
 
 const EN_DASH = String.fromCodePoint(0x2013);

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DehyphenateCleaner } from "./dehyphenate-cleaner.js";
-import { expectConsistent, makeDocument, pageTexts } from "./make-document.testing.js";
+import { expectConsistent, makeDocument, pageTexts } from "../../testing/make-document.testing.js";
 
 const HYPHEN = String.fromCodePoint(0x2010);
 

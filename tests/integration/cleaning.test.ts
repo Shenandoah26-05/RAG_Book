@@ -4,10 +4,7 @@ import { PdfJsLoader, UnpdfLoader } from "../../src/adapters/index.js";
 import { buildCleaner } from "../../src/composition/index.js";
 import { DEFAULT_CONFIG } from "../../src/config/index.js";
 import type { DocumentLoader, ParsedDocument } from "../../src/core/index.js";
-import {
-  expectConsistent,
-  pageTexts,
-} from "../../src/strategies/cleaning/make-document.testing.js";
+import { expectConsistent, pageTexts } from "../../src/testing/make-document.testing.js";
 
 const NOISY = fileURLToPath(new URL("../fixtures/noisy.pdf", import.meta.url));
 
