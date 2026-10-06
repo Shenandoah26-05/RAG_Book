@@ -1,0 +1,1309 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>RAGBook Build Board</title>
+<script>try{var p=localStorage.getItem("ragbook-palette");if(p==="cranberry"||p==="terminal")document.documentElement.setAttribute("data-palette",p);}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: sticky header + tab bar; board = 4 status columns that stack on phones; guidance tabs = single reading column */
+/* Palettes: olive (default) and cranberry are always white; terminal is always green on black */
+:root{--f-ui:"Instrument Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;--f-mono:"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;--r:8px;}
+:root{--bg:#FFFFFF;--surface:#FFFFFF;--sunk:#F7F8F2;--ink:#1E2117;--muted:#5E6252;--faint:#8A8E7D;--line:#E4E6DA;--accent:#5A6B2A;--accent-soft:#EDF0DF;--code-bg:#F3F4EC;--todo:#858A79;--todo-soft:#EEEFE7;--doing:#A8700C;--doing-soft:#FAF0DA;--review:#6F5EA3;--review-soft:#EEEBF6;--done:#2E7A4D;--done-soft:#E1F2E7;--warn:#B23A26;color-scheme:light}
+:root[data-palette="cranberry"]{--bg:#FFFFFF;--surface:#FFFFFF;--sunk:#FCF7F8;--ink:#24161A;--muted:#6A5A5E;--faint:#998A8E;--line:#EADDE0;--accent:#9B1B30;--accent-soft:#F8E6EA;--code-bg:#F8F2F3;--todo:#8E8286;--todo-soft:#F2ECEE;--doing:#AD6C0B;--doing-soft:#FCF0DC;--review:#4F57B0;--review-soft:#ECEDF8;--done:#23805A;--done-soft:#E2F4EB;--warn:#C2410C;color-scheme:light}
+:root[data-palette="terminal"][data-palette]{--bg:#050806;--surface:#0B110D;--sunk:#070B08;--ink:#C9F5D2;--muted:#7FAF8A;--faint:#557C5F;--line:#1B2B1F;--accent:#4ADE80;--accent-soft:#0F2A18;--code-bg:#09130C;--todo:#6F9077;--todo-soft:#101A13;--doing:#E6C14A;--doing-soft:#2A2410;--review:#7CC6FF;--review-soft:#0E2230;--done:#4ADE80;--done-soft:#0F2A18;--warn:#FF6B57;color-scheme:dark}
+:root[data-palette="terminal"] .brand h1,:root[data-palette="terminal"] .doc h2,:root[data-palette="terminal"] .drawer h2{font-family:var(--f-mono);letter-spacing:-.02em}
+.palette{display:flex;gap:6px;align-items:center;margin-left:auto}
+.palette .lbl{font-size:12.5px;color:var(--faint);margin-right:2px}
+.palette button{width:24px;height:24px;border-radius:50%;border:2px solid var(--line);cursor:pointer;padding:0;position:relative;overflow:hidden}
+.palette button[aria-pressed="true"]{border-color:var(--ink)}
+.palette button span{position:absolute;inset:0;clip-path:polygon(0 0,100% 0,0 100%)}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--f-ui);margin:0}
+a{color:var(--accent)}
+code,pre,.mono{font-family:var(--f-mono)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1360px;margin:0 auto;padding-inline:20px}
+
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--bg);border-bottom:1px solid var(--line)}
+.brand{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;padding-block:14px 8px}
+.brand h1{font-size:20px;margin:0;letter-spacing:-.01em}
+.brand .sub{color:var(--muted);font-size:13.5px}
+.brand .save{font-size:12.5px;color:var(--faint)}
+nav.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
+nav.tabs button{font:500 14px var(--f-ui);color:var(--muted);background:none;border:0;border-bottom:2px solid transparent;padding:8px 12px;cursor:pointer;white-space:nowrap}
+nav.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+nav.tabs button:hover{color:var(--ink)}
+
+main{padding-block:20px 60px}
+section.view[hidden]{display:none}
+
+/* Summary */
+.summary{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,2fr);gap:16px;margin-bottom:16px;align-items:start}
+@media (max-width:820px){.summary{grid-template-columns:1fr}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;min-width:0}
+.overall .big{font-size:30px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.overall .lbl{color:var(--muted);font-size:13px}
+.bar{display:flex;height:8px;border-radius:4px;overflow:hidden;background:var(--sunk);margin:10px 0 8px}
+.bar span{display:block;height:100%}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12.5px;color:var(--muted)}
+.legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.ms-strip{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px}
+@media (max-width:560px){.ms-strip{grid-auto-flow:column;grid-auto-columns:150px;grid-template-columns:none;overflow-x:auto;padding-bottom:4px}}
+.ms-chip{border:1px solid var(--line);border-radius:6px;padding:6px 8px;background:var(--surface);cursor:pointer;text-align:left;font:inherit;color:inherit}
+.ms-chip[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.ms-chip b{font-family:var(--f-mono);font-size:11.5px;color:var(--muted);font-weight:600}
+.ms-chip .nm{display:block;font-size:13px;font-weight:600;line-height:1.25;margin:1px 0 5px}
+.ms-chip .mini{height:4px;border-radius:2px;background:var(--sunk);overflow:hidden}
+.ms-chip .mini span{display:block;height:100%;background:var(--done)}
+
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+.filters input,.filters select{font:inherit;font-size:14px;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:6px 10px}
+.filters input{flex:1 1 220px;min-width:0}
+.filters .count{color:var(--faint);font-size:13px;margin-left:auto}
+.notice{font-size:13px;color:var(--muted);background:var(--sunk);border-radius:6px;padding:8px 12px;margin-bottom:12px}
+
+/* Board */
+.board{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;align-items:start}
+@media (max-width:1000px){.board{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:560px){.board{grid-template-columns:1fr}}
+.col{background:var(--sunk);border-radius:var(--r);padding:8px;min-height:120px;min-width:0}
+.col.drop{outline:2px dashed var(--accent);outline-offset:-2px}
+.col h3{display:flex;align-items:center;gap:8px;font-size:13px;text-transform:uppercase;letter-spacing:.06em;margin:4px 6px 10px;color:var(--muted)}
+.col h3 .dot{width:8px;height:8px;border-radius:50%}
+.col h3 .n{margin-left:auto;font-family:var(--f-mono);font-size:12px;color:var(--faint)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:9px 10px;margin-bottom:8px;cursor:pointer;border-left:3px solid var(--line)}
+.card:hover{border-color:var(--accent)}
+.card[data-st="doing"]{border-left-color:var(--doing)}
+.card[data-st="review"]{border-left-color:var(--review)}
+.card[data-st="done"]{border-left-color:var(--done)}
+.card .row1{display:flex;gap:6px;align-items:center;font-size:11.5px;color:var(--muted)}
+.card .id{font-family:var(--f-mono);font-weight:600;color:var(--ink)}
+.card .t{font-size:14px;font-weight:600;line-height:1.3;margin:4px 0 6px}
+.card .row2{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.tag{font-size:11px;padding:1px 6px;border-radius:4px;background:var(--sunk);color:var(--muted);white-space:nowrap}
+.tag.type-arch{background:var(--accent-soft);color:var(--accent)}
+.tag.type-spike{background:var(--review-soft);color:var(--review)}
+.tag.type-stretch{border:1px dashed var(--faint);background:none}
+.tag.blocked{background:none;color:var(--warn);border:1px solid currentColor}
+.pts{margin-left:auto;font-family:var(--f-mono);font-size:11px;color:var(--faint)}
+.acbar{height:3px;background:var(--sunk);border-radius:2px;margin-top:7px;overflow:hidden}
+.acbar span{display:block;height:100%;background:var(--done)}
+.empty{font-size:13px;color:var(--faint);padding:10px 6px}
+
+/* Drawer */
+.scrim{position:fixed;inset:0;background:rgba(10,14,22,.45);z-index:40}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(640px,100%);background:var(--surface);z-index:41;overflow-y:auto;box-shadow:-8px 0 30px rgba(0,0,0,.18);padding:calc(env(safe-area-inset-top,0px) + 18px) 22px calc(env(safe-area-inset-bottom,0px) + 30px)}
+.drawer .close{position:sticky;top:0;float:right;font:600 13px var(--f-ui);background:var(--sunk);color:var(--ink);border:0;border-radius:6px;padding:6px 10px;cursor:pointer}
+.drawer h2{font-size:21px;line-height:1.25;margin:4px 0 8px;text-wrap:balance}
+.drawer .meta{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.drawer h4{font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:18px 0 6px}
+.drawer p{margin:0 0 8px}
+.status-pick{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+@media (max-width:460px){.status-pick{grid-template-columns:repeat(2,1fr)}}
+.status-pick button{font:600 13px var(--f-ui);padding:8px 6px;border-radius:6px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.status-pick button[aria-pressed="true"][data-s="todo"]{background:var(--todo-soft);border-color:var(--todo)}
+.status-pick button[aria-pressed="true"][data-s="doing"]{background:var(--doing-soft);border-color:var(--doing);color:var(--doing)}
+.status-pick button[aria-pressed="true"][data-s="review"]{background:var(--review-soft);border-color:var(--review);color:var(--review)}
+.status-pick button[aria-pressed="true"][data-s="done"]{background:var(--done-soft);border-color:var(--done);color:var(--done)}
+.status-pick button:disabled{opacity:.55;cursor:not-allowed}
+.ac li{list-style:none;margin:0 0 6px;display:flex;gap:8px;align-items:flex-start}
+.ac{padding:0;margin:0}
+.ac input{margin-top:4px;accent-color:var(--done);flex:none}
+.ac label{cursor:pointer}
+.callout{background:var(--sunk);border-radius:6px;padding:10px 12px;font-size:14px}
+.gitbox{font-family:var(--f-mono);font-size:12.5px;background:var(--code-bg);border-radius:6px;padding:10px 12px;overflow-x:auto;white-space:pre}
+.field{width:100%;font:inherit;font-size:14px;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:7px 10px}
+textarea.field{min-height:84px;resize:vertical}
+.deplist{display:flex;flex-wrap:wrap;gap:6px}
+.deplist button{font:500 12px var(--f-mono);border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:5px;padding:2px 7px;cursor:pointer}
+.deplist button[data-st="done"]{color:var(--done);border-color:var(--done)}
+
+/* Reading tabs */
+.doc{max-width:900px}
+.doc h2{font-size:24px;margin:8px 0 6px;letter-spacing:-.01em;text-wrap:balance}
+.doc h3{font-size:17px;margin:28px 0 8px}
+.doc p,.doc li{max-width:72ch}
+.doc .lede{color:var(--muted);font-size:16px;margin-bottom:18px}
+pre.code{background:var(--code-bg);border:1px solid var(--line);border-radius:6px;padding:12px 14px;font-size:12.8px;line-height:1.55;overflow-x:auto;margin:8px 0 14px}
+.tbl{overflow-x:auto;margin:8px 0 16px}
+.tbl table{border-collapse:collapse;width:100%;font-size:14px;min-width:560px}
+.tbl th{text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);border-bottom:1px solid var(--line);padding:8px 10px}
+.tbl td{border-bottom:1px solid var(--line);padding:8px 10px;vertical-align:top}
+.tbl td code{font-size:12.5px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin:10px 0 16px}
+.grid2 .panel h4{margin:0 0 6px;font-size:15px}
+.grid2 .panel p{margin:0;font-size:14px;color:var(--muted)}
+.layers{display:grid;gap:6px;margin:12px 0 18px}
+.layer{display:grid;grid-template-columns:150px minmax(0,1fr);gap:12px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:10px 12px}
+.layer b{font-family:var(--f-mono);font-size:13px}
+.layer span{font-size:14px;color:var(--muted)}
+.layer.core{border-color:var(--accent);background:var(--accent-soft)}
+@media (max-width:560px){.layer{grid-template-columns:1fr;gap:2px}}
+.copyrow{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:14px}
+.copyrow h3{margin:0}
+.btn{font:600 13px var(--f-ui);border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:6px;padding:5px 10px;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.steps{counter-reset:s;padding:0;margin:10px 0 16px}
+.steps li{list-style:none;counter-increment:s;position:relative;padding-left:38px;margin-bottom:10px}
+.steps li::before{content:counter(s);position:absolute;left:0;top:0;width:26px;height:26px;border-radius:50%;background:var(--accent-soft);color:var(--accent);font:600 13px var(--f-mono);display:grid;place-items:center}
+.ms-list .panel{margin-bottom:12px}
+.ms-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px}
+.ms-head h3{margin:0;font-size:17px}
+.ms-head .pct{margin-left:auto;font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+.ms-goal{color:var(--muted);font-size:14px;margin:4px 0 8px}
+.ms-tix{display:flex;flex-wrap:wrap;gap:6px}
+.ms-tix button{font:500 12.5px var(--f-ui);border:1px solid var(--line);border-radius:5px;padding:3px 8px;background:var(--surface);color:var(--ink);cursor:pointer;text-align:left}
+.ms-tix button .mono{font-size:11.5px;color:var(--muted);margin-right:5px}
+.ms-tix button[data-st="doing"]{border-color:var(--doing)}
+.ms-tix button[data-st="review"]{border-color:var(--review)}
+.ms-tix button[data-st="done"]{background:var(--done-soft);border-color:var(--done)}
+.kbd{font-family:var(--f-mono);font-size:12.5px;background:var(--code-bg);padding:1px 5px;border-radius:4px}
+@media (prefers-reduced-motion:no-preference){.card{transition:border-color .12s}}
+</style>
+
+<header class="top">
+  <div class="wrap">
+    <div class="brand">
+      <h1>RAGBook</h1>
+      <span class="sub">A live, askable book built ticket by ticket · TypeScript · Ollama</span>
+      <div class="palette" role="group" aria-label="Colour palette">
+        <span class="lbl">Palette</span>
+        <button data-palette-pick="olive" title="Olive on white" aria-label="Olive on white" style="background:#FFFFFF"><span style="background:#5A6B2A"></span></button>
+        <button data-palette-pick="cranberry" title="Cranberry on white" aria-label="Cranberry on white" style="background:#FFFFFF"><span style="background:#9B1B30"></span></button>
+        <button data-palette-pick="terminal" title="Green on black" aria-label="Green on black" style="background:#050806"><span style="background:#4ADE80"></span></button>
+      </div>
+      <span class="save" id="saveState">Connecting…</span>
+    </div>
+    <nav class="tabs" role="tablist" aria-label="Sections">
+      <button role="tab" data-tab="board" aria-selected="true">Board</button>
+      <button role="tab" data-tab="roadmap" aria-selected="false">Milestones</button>
+      <button role="tab" data-tab="architecture" aria-selected="false">Architecture</button>
+      <button role="tab" data-tab="conventions" aria-selected="false">Code conventions</button>
+      <button role="tab" data-tab="git" aria-selected="false">Git &amp; PR workflow</button>
+      <button role="tab" data-tab="ai" aria-selected="false">Working with AI</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+<!-- BOARD -->
+<section class="view" id="view-board">
+  <div class="summary">
+    <div class="panel overall">
+      <div class="big" id="ovPct">0%</div>
+      <div class="lbl" id="ovLbl">of story points done</div>
+      <div class="bar" id="ovBar"></div>
+      <div class="legend">
+        <span><i style="background:var(--todo)"></i>To do</span>
+        <span><i style="background:var(--doing)"></i>In progress</span>
+        <span><i style="background:var(--review)"></i>In review (PR open)</span>
+        <span><i style="background:var(--done)"></i>Done (merged)</span>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="ms-strip" id="msStrip"></div>
+    </div>
+  </div>
+  <div class="filters">
+    <input id="q" type="search" placeholder="Search tickets, e.g. bm25 or RAG-052" aria-label="Search tickets">
+    <select id="fType" aria-label="Filter by type">
+      <option value="">All types</option><option value="feature">Feature</option><option value="arch">Architecture</option><option value="chore">Chore</option><option value="spike">Spike</option><option value="docs">Docs</option><option value="test">Test</option><option value="stretch">Stretch</option>
+    </select>
+    <select id="fReady" aria-label="Filter by readiness">
+      <option value="">All tickets</option><option value="ready">Ready to start (deps done)</option><option value="blocked">Blocked by dependencies</option>
+    </select>
+    <span class="count" id="count"></span>
+  </div>
+    <div class="board" id="board"></div>
+</section>
+
+<!-- MILESTONES -->
+<section class="view doc ms-list" id="view-roadmap" hidden>
+  <h2>Milestones</h2>
+  <p class="lede">Each milestone ends with something you can run and demo. Tag a release when one closes (<span class="kbd">v0.1.0</span> after M1, <span class="kbd">v0.2.0</span> after M2, and so on) and write two lines in <span class="kbd">CHANGELOG.md</span>.</p>
+  <div id="msList"></div>
+</section>
+
+<!-- ARCHITECTURE -->
+<section class="view doc" id="view-architecture" hidden>
+  <h2>Architecture</h2>
+  <p class="lede">Ports and adapters: the RAG logic depends only on interfaces it owns. Ollama, PDF libraries and vector databases plug in at the edges, so any of them can be swapped or A/B-tested without touching the pipeline.</p>
+
+  <h3>The layers, and who may import whom</h3>
+  <div class="layers">
+    <div class="layer"><b>cli/ · web/</b><span>Entry points. Parse arguments, call the composition root, print results. No logic.</span></div>
+    <div class="layer"><b>composition/</b><span>The only place that turns config into objects (<code>new OllamaEmbedder(...)</code>). Factories and registries live here.</span></div>
+    <div class="layer"><b>pipeline/ · eval/</b><span>Orchestration: ingest, index, query, experiments. Talks to ports only.</span></div>
+    <div class="layer"><b>strategies/ · adapters/</b><span>Implementations. Strategies are pure algorithms (chunkers, BM25, RRF). Adapters talk to the outside world (Ollama, pdf.js, files).</span></div>
+    <div class="layer core"><b>core/</b><span>Domain types and port interfaces. Imports nothing from the project except itself, and no third-party runtime packages.</span></div>
+  </div>
+  <p>Dependencies point downwards only. <code>core</code> never imports anything above it; <code>strategies</code> and <code>adapters</code> never import each other; only <code>composition</code> knows concrete classes. A <code>dependency-cruiser</code> rule in CI enforces this (RAG-005).</p>
+
+  <h3>How a question flows</h3>
+  <pre class="mermaid">
+flowchart LR
+  Q[Question] --> T[QueryTransformer]
+  T --> R[Retriever<br/>dense · bm25 · hybrid]
+  R --> RR[Reranker<br/>noop · llm · cross-encoder]
+  RR --> C[ContextAssembler<br/>budget · order · citations]
+  C --> L[LlmProvider<br/>ollama · openai-compatible]
+  L --> A[Answer + citations + trace]
+  subgraph Index built offline
+    P[DocumentLoader] --> CL[Cleaners] --> CH[Chunker] --> E[Embedder] --> V[VectorStore + ChunkStore]
+  end
+  V -. searched by .-> R
+  </pre>
+
+  <h3>The ports (interfaces) to write first</h3>
+  <p>These live in <code>src/core/ports/</code>. Every implementation on the board implements one of them. Write and review the interface before asking an AI to write any implementation.</p>
+  <pre class="code">// src/core/ports/document-loader.ts
+export interface DocumentLoader {
+  readonly name: string;
+  load(filePath: string): Promise&lt;ParsedDocument&gt;;
+}
+
+// src/core/ports/chunker.ts
+export interface Chunker {
+  readonly name: string;                 // "fixed-size", "recursive", ...
+  chunk(doc: ParsedDocument): Promise&lt;Chunk[]&gt;;
+}
+
+// src/core/ports/embedder.ts
+export type EmbedKind = "query" | "document";
+export interface Embedder {
+  readonly modelId: string;              // "ollama:all-minilm"
+  readonly dimensions: number;
+  embed(texts: readonly string[], kind: EmbedKind): Promise&lt;Float32Array[]&gt;;
+}
+
+// src/core/ports/vector-store.ts
+export interface VectorStore {
+  upsert(records: readonly VectorRecord[]): Promise&lt;void&gt;;
+  search(query: Float32Array, k: number, filter?: MetadataFilter): Promise&lt;ScoredId[]&gt;;
+  delete(ids: readonly string[]): Promise&lt;void&gt;;
+  count(): Promise&lt;number&gt;;
+}
+
+// src/core/ports/retriever.ts
+export interface Retriever {
+  readonly name: string;
+  retrieve(query: Query, k: number): Promise&lt;ScoredChunk[]&gt;;
+}
+
+// src/core/ports/reranker.ts
+export interface Reranker {
+  readonly name: string;
+  rerank(query: Query, candidates: readonly ScoredChunk[], topN: number): Promise&lt;ScoredChunk[]&gt;;
+}
+
+// src/core/ports/llm-provider.ts
+export interface LlmProvider {
+  readonly name: string;
+  chat(request: ChatRequest, signal?: AbortSignal): AsyncIterable&lt;ChatDelta&gt;;
+}
+
+// src/core/ports/context-assembler.ts
+export interface ContextAssembler {
+  assemble(query: Query, chunks: readonly ScoredChunk[]): AssembledPrompt;
+}</pre>
+
+  <h3>Design patterns you will meet</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Pattern</th><th>Where</th><th>Why it's there</th></tr></thead>
+    <tbody>
+      <tr><td><b>Strategy</b></td><td>Chunkers, retrievers, rerankers, fusion methods</td><td>Swap algorithms by name from config; A/B tests become config changes.</td></tr>
+      <tr><td><b>Factory + registry</b></td><td><code>composition/registries.ts</code></td><td>Maps <code>"recursive"</code> → <code>new RecursiveChunker(...)</code>. Adding a strategy means one new class and one registry line.</td></tr>
+      <tr><td><b>Adapter</b></td><td>Ollama, pdf.js, transformers.js, OpenAI-compatible APIs</td><td>Wraps a third-party API in our interface, so the rest of the code never sees it.</td></tr>
+      <tr><td><b>Decorator</b></td><td><code>CachingEmbedder</code>, <code>RetryingProvider</code>, <code>TracingRetriever</code></td><td>Adds caching, retries or timing around any implementation without changing it.</td></tr>
+      <tr><td><b>Chain of responsibility</b></td><td>Text cleaners</td><td>Each cleaner does one job; the order comes from config.</td></tr>
+      <tr><td><b>Null object</b></td><td><code>NoopReranker</code></td><td>"Reranking off" is a reranker that changes nothing, so the pipeline has no <code>if (flag)</code> branches.</td></tr>
+      <tr><td><b>Composition root / dependency injection</b></td><td><code>composition/build-pipeline.ts</code></td><td>Objects receive their dependencies through constructors; only one file creates them.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Configuration and feature flags</h3>
+  <p>Every experiment variant is a config file, validated with zod at startup. Flags are ordinary config values read once, in the composition root. Algorithms never read flags themselves.</p>
+  <pre class="code">// rag.config.json
+{
+  "ingestion":   { "loader": "pdfjs", "cleaners": ["unicode", "dehyphenate", "headers-footers"] },
+  "chunking":    { "strategy": "recursive", "maxTokens": 400, "overlapTokens": 60 },
+  "embedding":   { "provider": "ollama", "model": "all-minilm", "batchSize": 32 },
+  "vectorStore": { "type": "in-memory", "dir": "data/index" },
+  "retrieval":   { "strategy": "hybrid", "k": 5, "fusion": "rrf" },
+  "rerank":      { "enabled": false, "strategy": "llm", "candidates": 20 },
+  "generation":  { "provider": "ollama", "model": "llama3.2", "contextBudgetTokens": 3000, "ordering": "sandwich" }
+}</pre>
+
+  <h3>How A/B testing works in this design</h3>
+  <ul>
+    <li><b>Each index is namespaced</b> by what built it: <code>data/index/recursive-400__ollama-all-minilm/</code>. Several variants coexist and are reused across runs.</li>
+    <li><b>Gold labels are pages and text spans, not chunk ids.</b> A chunk counts as relevant if it overlaps a gold span, so every chunking strategy is scored against the same dataset.</li>
+    <li><b>Every run is reproducible:</b> results record the config hash, git commit, dataset version and model names.</li>
+    <li><b>Compare per question, not just averages.</b> Reports show which questions each variant won or lost (RAG-084).</li>
+  </ul>
+
+  <h3>Architecture decision records (ADRs)</h3>
+  <p>Any choice that would be expensive to reverse gets a one-page ADR in <code>docs/adr/</code>: context, options, decision, consequences. Tickets that require one say so. ADRs are reviewed in a PR like code.</p>
+</section>
+
+<!-- CONVENTIONS -->
+<section class="view doc" id="view-conventions" hidden>
+  <h2>Code conventions</h2>
+  <p class="lede">The goal is code that a reviewer can predict before opening the file. Consistency matters more than any single rule.</p>
+
+  <h3>Folder structure</h3>
+  <pre class="code">ragbook/
+├─ src/
+│  ├─ core/
+│  │  ├─ types/            document.ts · chunk.ts · retrieval.ts · chat.ts
+│  │  └─ ports/            one interface per file (see Architecture)
+│  ├─ adapters/            talk to the outside world
+│  │  ├─ loaders/          pdfjs-loader.ts · unpdf-loader.ts
+│  │  ├─ embedders/        ollama-embedder.ts · caching-embedder.ts
+│  │  ├─ llm/              ollama-provider.ts · openai-compatible-provider.ts
+│  │  └─ vector-stores/    in-memory-vector-store.ts · file-persistence.ts
+│  ├─ strategies/          pure algorithms
+│  │  ├─ cleaning/         dehyphenate-cleaner.ts · header-footer-cleaner.ts
+│  │  ├─ chunking/         fixed-size-chunker.ts · recursive-chunker.ts · ...
+│  │  ├─ retrieval/        dense-retriever.ts · bm25-retriever.ts · hybrid-retriever.ts
+│  │  ├─ ranking/          similarity.ts · rrf.ts · mmr.ts
+│  │  ├─ reranking/        noop-reranker.ts · llm-reranker.ts
+│  │  └─ prompting/        context-assembler.ts · templates/
+│  ├─ pipeline/            ingest.ts · build-index.ts · rag-pipeline.ts
+│  ├─ eval/                metrics/ · dataset.ts · experiment-runner.ts · report.ts
+│  ├─ composition/         registries.ts · build-pipeline.ts
+│  ├─ config/              schema.ts · load-config.ts
+│  ├─ shared/              logger.ts · errors.ts · trace.ts · hash.ts
+│  └─ cli/                 ingest.ts · index.ts · search.ts · chat.ts · eval.ts · doctor.ts
+├─ tests/integration/      tests that need Ollama or real files
+├─ tests/fixtures/         small PDFs and expected outputs
+├─ data/                   raw/ · processed/ · index/ · cache/   (git-ignored)
+├─ evals/                  datasets/ · experiments/ · reports/
+├─ docs/                   architecture.md · setup.md · adr/
+├─ .github/                workflows/ci.yml · pull_request_template.md · CODEOWNERS
+└─ rag.config.json · package.json · tsconfig.json · eslint.config.js · .env.example</pre>
+  <p>Unit tests sit next to the file they test: <code>recursive-chunker.ts</code> and <code>recursive-chunker.test.ts</code>.</p>
+
+  <h3>Naming</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Thing</th><th>Convention</th><th>Example</th></tr></thead>
+    <tbody>
+      <tr><td>Files and folders</td><td>kebab-case</td><td><code>hybrid-retriever.ts</code></td></tr>
+      <tr><td>Interfaces (ports)</td><td>PascalCase noun, no <code>I</code> prefix</td><td><code>Embedder</code>, <code>VectorStore</code></td></tr>
+      <tr><td>Implementations</td><td>What makes it different + the port name</td><td><code>OllamaEmbedder</code>, <code>RecursiveChunker</code>, <code>NoopReranker</code></td></tr>
+      <tr><td>Types</td><td>PascalCase</td><td><code>ScoredChunk</code>, <code>ChunkMetadata</code></td></tr>
+      <tr><td>Functions, variables</td><td>camelCase, verbs for functions</td><td><code>buildIndex()</code>, <code>topK</code></td></tr>
+      <tr><td>Constants</td><td>SCREAMING_SNAKE_CASE</td><td><code>DEFAULT_RRF_K = 60</code></td></tr>
+      <tr><td>Strategy names in config</td><td>kebab-case strings</td><td><code>"parent-child"</code>, <code>"cross-encoder"</code></td></tr>
+      <tr><td>Booleans</td><td><code>is/has/should</code> prefix</td><td><code>isEnabled</code>, <code>hasTextLayer</code></td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>TypeScript rules</h3>
+  <ul>
+    <li><code>strict: true</code> and <code>noUncheckedIndexedAccess: true</code>. No <code>any</code>; use <code>unknown</code> and narrow it.</li>
+    <li>Named exports only. Each folder exposes its public API through an <code>index.ts</code>.</li>
+    <li>Validate everything that crosses a boundary (config, Ollama responses, LLM JSON output) with zod. Inside the core, trust the types.</li>
+    <li>Prefer <code>readonly</code> data and pure functions. Math and ranking code (cosine, BM25, RRF, metrics) must have no I/O.</li>
+    <li>Dependencies come in through the constructor. Never create an adapter inside another class.</li>
+    <li>Throw <code>RagError</code> with a stable <code>code</code> and a <code>cause</code>; never throw strings. Log once, where the error is handled.</li>
+    <li>No <code>console.log</code> outside <code>cli/</code>; use the injected <code>Logger</code>.</li>
+    <li>Every public interface and class gets a short TSDoc comment: what it does, and anything surprising.</li>
+  </ul>
+
+  <h3>Testing</h3>
+  <div class="grid2">
+    <div class="panel"><h4>Unit (most tests)</h4><p>Pure logic with hand-computed expected values: chunk boundaries, BM25 scores, RRF order, metric values. Fast, no network.</p></div>
+    <div class="panel"><h4>Contract tests</h4><p>One shared suite per port, run against every implementation. A new vector store passes the same tests as the in-memory one.</p></div>
+    <div class="panel"><h4>Integration</h4><p>Real Ollama and real PDFs in <code>tests/integration/</code>. Skipped automatically when Ollama isn't running.</p></div>
+    <div class="panel"><h4>Evaluation</h4><p>Not pass/fail tests but measurements: run with <code>pnpm eval</code> and compare reports.</p></div>
+  </div>
+</section>
+
+<!-- GIT -->
+<section class="view doc" id="view-git" hidden>
+  <h2>Git &amp; PR workflow</h2>
+  <p class="lede">One ticket, one branch, one pull request. <code>main</code> is always green and always runnable.</p>
+
+  <h3>The loop for every ticket</h3>
+  <ol class="steps">
+    <li><b>Pick a ticket that is ready</b> (all dependencies done). Move it to <i>In progress</i> on this board.</li>
+    <li><b>Branch from an up-to-date main</b>: <span class="kbd">git switch main &amp;&amp; git pull &amp;&amp; git switch -c feat/rag-024-recursive-chunker</span>. The ticket drawer shows the exact name.</li>
+    <li><b>Commit small and often</b> with conventional commit messages. Each commit should build.</li>
+    <li><b>Keep up with main</b>: <span class="kbd">git fetch &amp;&amp; git rebase origin/main</span>, then <span class="kbd">git push --force-with-lease</span> (never plain <span class="kbd">--force</span>).</li>
+    <li><b>Open a pull request</b> using the template below, link the ticket, and move the card to <i>In review</i>. Paste the PR link into the ticket.</li>
+    <li><b>CI must pass</b>: typecheck, lint, tests, dependency rules.</li>
+    <li><b>Review.</b> Respond to every comment: fix it, or explain why not. Re-request review after changes.</li>
+    <li><b>Squash and merge</b>, delete the branch, move the card to <i>Done</i>.</li>
+  </ol>
+  <pre class="mermaid">
+gitGraph
+  commit id: "main"
+  branch feat/rag-024-recursive-chunker
+  checkout feat/rag-024-recursive-chunker
+  commit id: "feat: add separators"
+  commit id: "test: edge cases"
+  checkout main
+  commit id: "RAG-022 merged"
+  checkout feat/rag-024-recursive-chunker
+  merge main id: "rebase on main"
+  commit id: "fix: review comments"
+  checkout main
+  merge feat/rag-024-recursive-chunker id: "squash: RAG-024"
+  </pre>
+
+  <h3>Branch names</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Prefix</th><th>Use for</th><th>Example</th></tr></thead>
+    <tbody>
+      <tr><td><code>feat/</code></td><td>New behaviour, including new interfaces</td><td><code>feat/rag-051-bm25-retriever</code></td></tr>
+      <tr><td><code>fix/</code></td><td>Bug fixes</td><td><code>fix/rag-024-overlap-off-by-one</code></td></tr>
+      <tr><td><code>chore/</code></td><td>Tooling, CI, dependencies</td><td><code>chore/rag-003-ci-pipeline</code></td></tr>
+      <tr><td><code>docs/</code></td><td>ADRs, READMEs</td><td><code>docs/rag-006-adr-ports-adapters</code></td></tr>
+      <tr><td><code>spike/</code></td><td>Time-boxed experiments; findings go into an ADR</td><td><code>spike/rag-044-hnsw</code></td></tr>
+      <tr><td><code>test/</code></td><td>Tests only</td><td><code>test/rag-063-rerank-toggle</code></td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Commit messages (Conventional Commits)</h3>
+  <pre class="code">type(scope): short summary in the imperative, under 72 characters
+
+Optional body: why the change was made, not what the diff shows.
+
+Refs: RAG-024</pre>
+  <p>Types: <code>feat</code>, <code>fix</code>, <code>refactor</code>, <code>test</code>, <code>docs</code>, <code>chore</code>, <code>perf</code>. Scopes match folders: <code>ingestion</code>, <code>chunking</code>, <code>embedding</code>, <code>store</code>, <code>retrieval</code>, <code>rerank</code>, <code>generation</code>, <code>eval</code>, <code>config</code>, <code>cli</code>, <code>web</code>.</p>
+  <pre class="code">feat(chunking): add recursive chunker with separator hierarchy
+test(chunking): cover documents shorter than one chunk
+fix(retrieval): normalise query vectors before cosine search
+docs(adr): record decision to use pdfjs for extraction</pre>
+
+  <h3>Pull request rules</h3>
+  <ul>
+    <li><b>Small:</b> aim for under 400 changed lines. A large ticket becomes several PRs (interface first, then implementation).</li>
+    <li><b>One ticket per PR</b>, and the ticket id in the title: <span class="kbd">RAG-024: Recursive chunker</span>.</li>
+    <li><b>Open a draft PR early</b> if you want feedback on direction before finishing.</li>
+    <li><b>Review your own diff first</b>, on GitHub, before requesting review. Most mistakes are visible there.</li>
+    <li><b>Never merge your own PR without a review</b>, and never merge with failing CI.</li>
+  </ul>
+
+  <div class="copyrow"><h3>PR template</h3><button class="btn" data-copy="prTemplate">Copy</button></div>
+  <pre class="code" id="prTemplate">## Ticket
+RAG-___: (title)  ·  link to the board card
+
+## What changed
+-
+
+## Why / design notes
+(Which interface does this implement? Any trade-offs? Link an ADR if one was written.)
+
+## How to test
+```bash
+pnpm test
+pnpm ... (exact command to see it working)
+```
+
+## Evidence
+(Output, screenshot, or metric before/after. For retrieval changes: recall@5 on the smoke set.)
+
+## AI assistance
+(Which parts were AI-generated? What did you verify or change by hand?)
+
+## Checklist
+- [ ] Acceptance criteria in the ticket are all met
+- [ ] Tests added or updated, and they fail without this change
+- [ ] Types are strict: no `any`, no unchecked casts
+- [ ] Public interfaces and classes have TSDoc
+- [ ] No new dependency between layers that the architecture forbids
+- [ ] Config / docs / ADR updated if behaviour changed</pre>
+
+  <h3>Reviewer checklist</h3>
+  <div class="grid2">
+    <div class="panel"><h4>Design</h4><p>Does it implement the port without changing it? Is anything concrete created outside the composition root? Would adding the next strategy require editing this code?</p></div>
+    <div class="panel"><h4>Correctness</h4><p>Do the tests check real expected values, including edge cases (empty input, one item, exact boundaries)? Do they fail if the logic is broken?</p></div>
+    <div class="panel"><h4>Readability</h4><p>Could you explain each function to someone else? Are names specific? Is any clever code justified with a comment?</p></div>
+    <div class="panel"><h4>Boundaries</h4><p>Is external data validated? Are errors typed and handled once? Are secrets kept out of code and logs?</p></div>
+  </div>
+
+  <h3>Writing review comments</h3>
+  <p>Prefix every comment with its label, so the author knows what must change before merging (the Conventional Comments style):</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Label</th><th>Meaning</th><th>Example</th></tr></thead>
+    <tbody>
+      <tr><td><code>blocker:</code></td><td>Must change before merge</td><td>blocker: this reads the flag inside the retriever; move it to the composition root.</td></tr>
+      <tr><td><code>issue:</code></td><td>A problem; let's agree on a fix</td><td>issue: overlap ≥ size loops forever. Validate in the constructor?</td></tr>
+      <tr><td><code>suggestion:</code></td><td>An improvement the author may decline</td><td>suggestion: a min-heap would avoid sorting all scores.</td></tr>
+      <tr><td><code>question:</code></td><td>Asking to understand</td><td>question: why normalise here and again in the store?</td></tr>
+      <tr><td><code>nit:</code></td><td>Cosmetic, never blocks</td><td>nit: <code>k</code> → <code>topK</code> to match the interface.</td></tr>
+      <tr><td><code>praise:</code></td><td>Something done well</td><td>praise: the hand-computed BM25 test makes this easy to trust.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Definitions</h3>
+  <div class="grid2">
+    <div class="panel"><h4>Definition of ready</h4><p>Dependencies done; acceptance criteria clear; the interface it implements exists in <code>core/ports</code>; you can say how you'll test it.</p></div>
+    <div class="panel"><h4>Definition of done</h4><p>All acceptance criteria met; tests pass in CI; reviewed and squash-merged; docs or ADR updated; card moved to Done with the PR link.</p></div>
+  </div>
+</section>
+
+<!-- AI -->
+<section class="view doc" id="view-ai" hidden>
+  <h2>Working with AI on this project</h2>
+  <p class="lede">The split of work: AI writes the bodies of individual functions and classes, <b>at most one per prompt, never a whole file</b>. You own the architecture, the interfaces, the file around each piece (imports, exports, wiring), the tests' expected values, and the final judgement in review. You must be able to explain every line you merge.</p>
+  <div class="callout" style="margin-bottom:16px"><b>The one-unit rule.</b> Each prompt asks for one function or one class, nothing more. You write the file skeleton yourself, paste in one generated unit, read it, test it, then ask for the next. It keeps you in charge of the structure and keeps every piece small enough to understand completely.</div>
+
+  <h3>Who does what</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Decision</th><th>Owner</th></tr></thead>
+    <tbody>
+      <tr><td>Layers, ports (interfaces), folder structure, naming</td><td>You (set on this board, changed only through an ADR)</td></tr>
+      <tr><td>Acceptance criteria and expected test values</td><td>You, before any code is generated</td></tr>
+      <tr><td>The file itself: imports, exports, how units fit together</td><td>You</td></tr>
+      <tr><td>The body of one function or one class at a time</td><td>AI, from your spec (one unit per prompt)</td></tr>
+      <tr><td>Test scaffolding and edge-case ideas</td><td>AI suggests; you check the expected values by hand</td></tr>
+      <tr><td>Whether it merges</td><td>The reviewer, against the checklists</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>The loop for one ticket</h3>
+  <ol class="steps">
+    <li><b>Read the ticket and its port.</b> If the interface doesn't exist yet, write it yourself first.</li>
+    <li><b>Write two or three tests with hand-computed answers</b> before generating anything. These are your ground truth.</li>
+    <li><b>Write the file skeleton yourself</b>: imports, the exported class or function signatures, and TODOs. Then <b>prompt the AI for one function or one class</b> using the template below. Paste it in, read it, run its tests, and only then ask for the next unit.</li>
+    <li><b>Read the generated code line by line.</b> Look for invented APIs, hidden I/O, swallowed errors, <code>any</code>, and code outside the file you asked for.</li>
+    <li><b>Run the tests and break them on purpose</b> (change an expected value) to confirm they test something.</li>
+    <li><b>Open the PR</b> and fill in the "AI assistance" section honestly.</li>
+  </ol>
+
+  <div class="copyrow"><h3>Prompt template for a ticket</h3><button class="btn" data-copy="aiPrompt">Copy</button></div>
+  <pre class="code" id="aiPrompt">You are implementing ticket RAG-___ in a TypeScript project (Node 22, ESM, strict mode).
+
+Architecture rules:
+- Ports-and-adapters. Implement the interface below; do not change it.
+- Return only the single function or class requested. Do not add dependencies.
+- Constructor injection for dependencies. No I/O in pure algorithm code.
+- Named exports, kebab-case file names, no `any`, throw RagError(code, message, { cause }).
+- Validate external data with zod.
+
+Interface (from src/core/ports/____.ts):
+```ts
+(paste the interface)
+```
+
+Write ONLY this one unit (one function or one class), nothing else:
+- Name and signature: ____________________
+- It lives in: src/strategies/____/____.ts (I will paste it in myself)
+- Do not write imports, other functions, other classes or the rest of the file.
+
+Acceptance criteria:
+- (paste from the ticket)
+
+Tests I already wrote (keep them, make them pass):
+```ts
+(paste)
+```
+
+After the code, explain in 3–5 bullet points how it works and which edge cases it handles.</pre>
+
+  <h3>Rules that keep AI-written code healthy</h3>
+  <ul>
+    <li><b>Never merge code you can't explain.</b> If a reviewer asks "why?", "the AI wrote it" is not an answer.</li>
+    <li><b>Interfaces are frozen during implementation.</b> If the AI wants to change one, stop and decide it yourself (with an ADR if it matters).</li>
+    <li><b>One function or one class per prompt, never a whole file.</b> Small units are easy to read in full, test on their own and explain in review. If the AI returns more than you asked for, delete the extra and ask again.</li>
+    <li><b>Check every third-party call against the docs</b> (Ollama API, pdf.js, zod). Invented options and endpoints are the most common AI error.</li>
+    <li><b>Keep humans on the numbers.</b> Expected values in tests, BM25 and metric formulas are verified by hand.</li>
+  </ul>
+</section>
+
+</main>
+
+<div class="scrim" id="scrim" hidden></div>
+<aside class="drawer" id="drawer" hidden aria-modal="true" role="dialog" aria-labelledby="dTitle"></aside>
+
+<script>
+(() => {
+"use strict";
+const MS = [
+  {id:"M0", name:"Foundations", scope:"repo", goal:"A repository where every PR is checked automatically and the architecture rules are written down.", demo:"Open a PR that breaks a layer rule and watch CI reject it."},
+  {id:"M1", name:"Ingestion", scope:"ingestion", goal:"Turn the PDF into clean, page-aware text with its section structure.", demo:"pnpm ingest prints pages and sections; the Markdown export reads like the book."},
+  {id:"M2", name:"Chunking", scope:"chunking", goal:"Several chunking strategies behind one interface, with a way to inspect what they produce.", demo:"pnpm chunks --strategy recursive vs structure, side by side."},
+  {id:"M3", name:"Embeddings", scope:"embedding", goal:"Sentence-BERT embeddings from Ollama, cached, with hand-written vector math.", demo:"Every chunk gets a Sentence-BERT vector from Ollama; a second run makes zero model calls."},
+  {id:"M4", name:"Vector store", scope:"store", goal:"A local vector store you understand completely: exact search first, then speed-ups.", demo:"pnpm index builds a namespaced index on disk; search matches a brute-force check."},
+  {id:"M5", name:"Retrieval & ranking", scope:"retrieval", goal:"Dense, BM25 and hybrid retrieval, all implemented by hand and comparable.", demo:"pnpm search shows each retriever's ranking and the fused result."},
+  {id:"M6", name:"Reranking", scope:"rerank", goal:"Rerankers behind a feature flag, with no flag checks inside the pipeline.", demo:"Same query, rerank on and off, different order in the trace."},
+  {id:"M7", name:"Generation & chatbot", scope:"generation", goal:"A streaming chatbot that answers from the book with page citations.", demo:"pnpm chat answers a question and cites the pages it used."},
+  {id:"M8", name:"Evaluation & A/B", scope:"eval", goal:"Measure every choice: a labelled dataset, hand-written metrics and an experiment runner.", demo:"An experiment report comparing variants, and an ADR choosing the defaults."},
+  {id:"M9", name:"More models & providers", scope:"providers", goal:"Compare embedding models and add inference providers without touching the pipeline.", demo:"Switch provider in config; the same eval runs unchanged."},
+  {id:"M10", name:"The live book", scope:"web", goal:"A web reader where you can ask the book questions and jump to the cited passages.", demo:"Select a paragraph, ask about it, click a citation, land on the page."}
+];
+
+const T = [
+// M0
+{id:"RAG-001",m:"M0",type:"chore",pts:2,title:"Bootstrap the TypeScript project",deps:[],
+ desc:"Create the repository with a strict TypeScript setup and the scripts every later ticket relies on.",
+ ac:["pnpm workspace-ready repo, Node 22 LTS pinned in .nvmrc and package.json engines","tsconfig with strict, noUncheckedIndexedAccess, ESM (module NodeNext)","tsx for running TypeScript directly; vitest with one passing sample test","Scripts: dev, build, typecheck, lint, test, format","README with prerequisites and setup steps that work on a clean machine"],
+ arch:"No frameworks yet. Keep package.json minimal; every dependency added later needs a reason in its PR.",
+ learn:"What each tool does (tsc vs tsx vs vitest) and why strict mode catches bugs early."},
+{id:"RAG-002",m:"M0",type:"chore",pts:1,title:"Repository rules on GitHub",deps:["RAG-001"],
+ desc:"Make the Git workflow on the Git & PR tab enforceable by GitHub itself.",
+ ac:["main protected: PR required, 1 approval, CI must pass, no force pushes","Squash merge only; branches auto-deleted after merge","PR template (.github/pull_request_template.md) and CODEOWNERS committed","Labels created: type:feature, type:chore, type:spike, milestone:M0…M10"],
+ arch:"Process is part of the architecture: the rules live in the repo, not in someone's memory.",
+ learn:"Branch protection and why main must always be green."},
+{id:"RAG-003",m:"M0",type:"chore",pts:2,title:"CI pipeline with GitHub Actions",deps:["RAG-001"],
+ desc:"Run the quality checks on every pull request and every push to main.",
+ ac:["Workflow runs install (with pnpm cache), typecheck, lint, test","Fails on lint warnings, not just errors","Status badge in README","Runs in under 3 minutes"],
+ arch:"CI is the referee for every rule on this board; later tickets add steps to it (dependency rules, eval smoke test).",
+ learn:"Reading CI logs and fixing a red build."},
+{id:"RAG-004",m:"M0",type:"chore",pts:1,title:"Lint, format and commit-message automation",deps:["RAG-001"],
+ desc:"Make code style and commit messages automatic so reviews focus on design.",
+ ac:["ESLint with typescript-eslint strict config; Prettier; .editorconfig","commitlint enforces Conventional Commits","husky + lint-staged run lint and format on staged files","Rule banning console.log outside src/cli"],
+ arch:"Automate taste so humans review logic, not commas.",
+ learn:"Conventional Commits and why consistent history helps."},
+{id:"RAG-005",m:"M0",type:"arch",pts:2,title:"Folder skeleton and layer rules",deps:["RAG-001"],
+ desc:"Create the folder structure from the Code conventions tab and enforce the import rules from the Architecture tab.",
+ ac:["Folders created with index.ts barrels","dependency-cruiser config: core imports nothing; strategies and adapters import only core; only composition imports concrete classes","Dependency check runs in CI and fails on violations","docs/architecture.md with the layer diagram"],
+ arch:"This ticket turns the architecture from advice into a rule that CI checks.",
+ learn:"Dependency direction and why the core must not know about Ollama."},
+{id:"RAG-006",m:"M0",type:"docs",pts:1,title:"ADR-0001: ports and adapters",deps:["RAG-005"],
+ desc:"Record the main architecture decision and set up the ADR habit.",
+ ac:["docs/adr/0000-template.md (context, options, decision, consequences)","docs/adr/0001-ports-and-adapters.md written and merged through a PR","README links to the ADR folder"],
+ arch:"Decisions that are expensive to reverse are written down once and changed only through a new ADR.",
+ learn:"Writing down why, not just what."},
+{id:"RAG-007",m:"M0",type:"arch",pts:3,title:"Core domain types",deps:["RAG-005"],
+ desc:"Define the shared vocabulary every module uses.",
+ ac:["ParsedDocument, Page, Section, Chunk, ChunkMetadata, VectorRecord, ScoredId, ScoredChunk, Query, Citation in src/core/types","All fields readonly; ids are branded string types","Stable content-hash id helper with unit tests","Zero imports outside core"],
+ arch:"Chunk metadata must carry docId, page range, section path and character span: evaluation (M8) depends on spans to score any chunker fairly.",
+ learn:"Modelling a domain in types before writing behaviour."},
+{id:"RAG-008",m:"M0",type:"feature",pts:3,title:"Config schema and feature flags",deps:["RAG-007"],
+ desc:"One validated config object drives every choice: strategies, models, flags.",
+ ac:["zod schema for rag.config.json covering every section on the Architecture tab","Overrides from env (RAG_*) and CLI flags, in that precedence","Invalid config fails at startup with a readable message","Config hash helper (used to tag experiment results)"],
+ arch:"Flags are read once, in the composition root. Algorithms receive values, never the config object.",
+ learn:"Configuration as data, and why scattered if (flag) checks rot."},
+{id:"RAG-009",m:"M0",type:"feature",pts:2,title:"Logger, errors and trace",deps:["RAG-007"],
+ desc:"Shared primitives for diagnosing what the pipeline did.",
+ ac:["Logger interface with console and JSON implementations","RagError with stable code, message and cause","Trace object records each stage's timing and a summary of its output","Unit tests for Trace"],
+ arch:"The trace is the backbone of the debug views in the CLI (RAG-055) and web app (RAG-105).",
+ learn:"Structured logging vs printing."},
+{id:"RAG-010",m:"M0",type:"chore",pts:1,title:"Ollama setup and doctor command",deps:["RAG-001"],
+ desc:"Make local inference reproducible for everyone on the project.",
+ ac:["docs/setup.md: install Ollama, pull all-minilm and llama3.2","pnpm doctor checks OLLAMA_HOST is reachable and required models are present, and prints the fix for each failure",".env.example documents OLLAMA_HOST"],
+ arch:"Environment problems should fail fast with instructions, not as mysterious errors deep in a pipeline.",
+ learn:"Running models locally; the Ollama HTTP API."},
+// M1
+{id:"RAG-011",m:"M1",type:"feature",pts:3,title:"DocumentLoader port and pdf.js loader",deps:["RAG-007"],
+ desc:"Extract text from the PDF page by page.",
+ ac:["DocumentLoader interface in core/ports","PdfJsLoader (pdfjs-dist) returns ParsedDocument with 1-based page numbers and per-page text","Metadata: title, page count, sha256 of the file","Small fixture PDF and an integration test"],
+ arch:"Keep the pdf.js text items (with font sizes) available to later steps; heading detection (RAG-014) needs them.",
+ learn:"How PDF text is really stored: positioned fragments, not paragraphs."},
+{id:"RAG-012",m:"M1",type:"spike",pts:2,title:"Compare two PDF extractors",deps:["RAG-011"],
+ desc:"Implement a second loader behind the same port and choose with evidence.",
+ ac:["UnpdfLoader (or pdf-parse) implements DocumentLoader","Script diffs both outputs on the book","Findings and decision in docs/adr/0002-pdf-extractor.md"],
+ arch:"Proof that the port works: a second implementation needs zero changes elsewhere.",
+ learn:"Making a tooling decision from evidence."},
+{id:"RAG-013",m:"M1",type:"feature",pts:3,title:"Text cleaning chain",deps:["RAG-011"],
+ desc:"Remove extraction noise before chunking.",
+ ac:["Cleaner interface: (doc) => doc","Cleaners: unicode/whitespace normalisation, de-hyphenation across line breaks, repeated header/footer removal (lines on more than half the pages), page-number removal","Order configured in rag.config.json","Each cleaner has before/after fixture tests"],
+ arch:"Chain of responsibility: each cleaner is pure and does one job.",
+ learn:"Garbage in, garbage out: most RAG failures start here."},
+{id:"RAG-014",m:"M1",type:"feature",pts:5,title:"Heading and section detection",deps:["RAG-013"],
+ desc:"Recover the book's structure: chapters, sections, subsections.",
+ ac:["Detect heading levels from font size and weight in pdf.js text items","Section tree with title, level, page range and character span","Markdown export of the whole document for eyeballing","Verified by hand on two chapters"],
+ arch:"Structure-aware chunking (RAG-025) and the web table of contents (RAG-102) both consume this tree.",
+ learn:"Heuristics vs rules; checking them against real data."},
+{id:"RAG-015",m:"M1",type:"feature",pts:2,title:"Ingest CLI with processed-document cache",deps:["RAG-013"],
+ desc:"One command turns a PDF into a processed, reusable document.",
+ ac:["pnpm ingest data/raw/book.pdf writes data/processed/<docId>.json","Skips work when the file hash is unchanged; --force re-runs","Logs page count, section count and duration"],
+ arch:"Each pipeline stage writes an inspectable artifact, so stages can be debugged in isolation.",
+ learn:"Idempotent pipelines."},
+{id:"RAG-016",m:"M1",type:"stretch",pts:3,title:"OCR fallback for scanned pages",deps:["RAG-011"],
+ desc:"Handle pages that have no text layer.",
+ ac:["Detect pages with no extractable text","Run tesseract.js on them","Mark metadata.ocr = true on those pages"],
+ arch:"A decorator around any DocumentLoader.",
+ learn:"Where OCR errors come from."},
+// M2
+{id:"RAG-020",m:"M2",type:"arch",pts:3,title:"Chunker port, registry and metadata",deps:["RAG-007","RAG-015"],
+ desc:"The contract every chunking strategy follows.",
+ ac:["Chunker interface in core/ports","ChunkerRegistry maps a config name to a factory","Every chunk carries docId, page range, section path, char start/end and strategy name","Shared contract test: chunk spans cover the document with no gaps beyond the overlap"],
+ arch:"Chunks keep two texts: text (shown and cited) and embedText (what gets embedded, may include heading context).",
+ learn:"Contract tests that every implementation must pass."},
+{id:"RAG-021",m:"M2",type:"feature",pts:2,title:"Tokenizer port",deps:["RAG-007"],
+ desc:"Count tokens consistently across chunking and prompt budgeting.",
+ ac:["Tokenizer interface: count(text), encode(text)","ApproxTokenizer (characters ÷ 4) and TiktokenTokenizer (js-tiktoken)","Chunkers and the context assembler receive a Tokenizer through their constructor"],
+ arch:"Token counts are approximations for local models; isolate the choice behind a port.",
+ learn:"Why tokens, not characters, are the unit that matters."},
+{id:"RAG-022",m:"M2",type:"feature",pts:2,title:"Fixed-size chunker with overlap",deps:["RAG-020","RAG-021"],
+ desc:"The baseline strategy everything else is compared against.",
+ ac:["Size and overlap in tokens; constructor rejects overlap ≥ size","Edge cases tested: empty document, shorter than one chunk, exact multiple","Passes the chunker contract test"],
+ arch:"Keep it dumb on purpose: it is the control group in every A/B test.",
+ learn:"Off-by-one errors in sliding windows."},
+{id:"RAG-023",m:"M2",type:"feature",pts:2,title:"Sentence and paragraph chunkers",deps:["RAG-020"],
+ desc:"Split on natural boundaries, packed up to a size limit.",
+ ac:["Sentence splitter handles abbreviations (e.g., Dr.) and decimals","Paragraph chunker","Both pack whole units up to maxTokens"],
+ arch:"The sentence splitter is reused by the semantic chunker (RAG-026).",
+ learn:"Why sentence splitting is harder than splitting on full stops."},
+{id:"RAG-024",m:"M2",type:"feature",pts:3,title:"Recursive chunker",deps:["RAG-022"],
+ desc:"Split on the largest separator that fits, falling back to smaller ones.",
+ ac:["Separator hierarchy configurable","Never exceeds maxTokens","Keeps whole paragraphs and sentences when possible","Tests mirror the Lecture 3 example"],
+ arch:"Likely default strategy; the A/B tests in M8 decide.",
+ learn:"Recursion with a clear base case."},
+{id:"RAG-025",m:"M2",type:"feature",pts:3,title:"Structure-aware chunker",deps:["RAG-014","RAG-020"],
+ desc:"One chunk per section, split further only when a section is too long.",
+ ac:["Uses the section tree from RAG-014","Large sections split with the recursive chunker","embedText is prefixed with the heading path (Chapter 3 > 3.2 Embeddings); text stays raw"],
+ arch:"Composes another chunker instead of duplicating its logic.",
+ learn:"Composition over copy-paste."},
+{id:"RAG-026",m:"M3",type:"feature",pts:3,title:"Semantic chunker",deps:["RAG-020","RAG-031"],
+ desc:"Break chunks where the topic shifts, measured by embedding similarity.",
+ ac:["Embeds sentences and breaks where neighbour cosine similarity drops below a threshold or percentile","Threshold configurable; number of breaks logged","Receives an Embedder through its constructor"],
+ arch:"The only chunker that depends on another port: a good test of dependency injection.",
+ learn:"Tuning a threshold against real output."},
+{id:"RAG-027",m:"M2",type:"feature",pts:3,title:"Parent–child (small-to-big) chunker",deps:["RAG-024"],
+ desc:"Search with small chunks, answer with their larger parents.",
+ ac:["Child chunks carry parentId; parents stored separately","Configurable child and parent sizes","Retrieval expands children to parents in RAG-054"],
+ arch:"ChunkStore must support looking up parents that are not themselves indexed.",
+ learn:"Separating what you search from what you show."},
+{id:"RAG-028",m:"M2",type:"feature",pts:2,title:"Chunk inspector",deps:["RAG-022"],
+ desc:"See what a strategy actually produced before trusting it.",
+ ac:["pnpm chunks --strategy <name> prints count, token-size histogram and 3 random samples","Writes data/processed/<doc>.<strategy>.chunks.md for reading"],
+ arch:"Every stage gets a way to look at its output.",
+ learn:"Reading data, not just code."},
+// M3
+{id:"RAG-030",m:"M3",type:"arch",pts:1,title:"Embedder port",deps:["RAG-007"],
+ desc:"The contract for every embedding model.",
+ ac:["Embedder interface with modelId, dimensions, embed(texts, kind)","kind is 'query' or 'document' to support models with different prefixes","TSDoc states that vectors are returned L2-normalised"],
+ arch:"The query/document distinction costs nothing now and avoids a breaking change when asymmetric models arrive (RAG-090).",
+ learn:"Designing an interface for the next implementation, not just the first."},
+{id:"RAG-031",m:"M3",type:"feature",pts:3,title:"Ollama embedder (Sentence-BERT: all-minilm)",deps:["RAG-030","RAG-010"],
+ desc:"Get embeddings from a local Sentence-BERT model through Ollama.",
+ ac:["Calls Ollama's /api/embed with batched input; batch size and timeout configurable","Retries with backoff on network errors","Validates the response with zod and checks dimensions on first call","Returns normalised Float32Array vectors","Integration test, skipped when Ollama is not running"],
+ arch:"An adapter: nothing outside this file knows the Ollama response format.",
+ learn:"What all-minilm is (a Sentence-BERT model, 384 dimensions) and what batching buys you."},
+{id:"RAG-032",m:"M3",type:"feature",pts:2,title:"Caching embedder (decorator)",deps:["RAG-031"],
+ desc:"Never embed the same text with the same model twice.",
+ ac:["CachingEmbedder wraps any Embedder","Key = sha256(modelId + kind + text); stored in data/cache","Hit and miss counts logged","Re-indexing unchanged chunks makes zero model calls"],
+ arch:"Decorator pattern: the wrapped embedder doesn't know it is cached.",
+ learn:"Decorators and cache keys."},
+{id:"RAG-033",m:"M3",type:"feature",pts:2,title:"Vector math by hand",deps:["RAG-007"],
+ desc:"Implement the similarity functions instead of importing them.",
+ ac:["dot, norm, normalise, cosine, euclidean on Float32Array","Tests with values computed by hand","Micro-benchmark script comparing cosine vs dot on normalised vectors"],
+ arch:"Pure functions in strategies/ranking with no I/O.",
+ learn:"Why cosine and dot product rank identically on normalised vectors."},
+{id:"RAG-034",m:"M4",type:"feature",pts:3,title:"Indexing pipeline and index namespaces",deps:["RAG-028","RAG-032","RAG-041"],
+ desc:"One command builds a searchable index for a given chunker and embedder.",
+ ac:["pnpm index --chunker recursive --embedder ollama:all-minilm","Index written to data/index/<chunker>__<embedder>/","manifest.json records config, counts, timings and git commit","Re-running is idempotent"],
+ arch:"Namespaced indexes let several A/B variants exist side by side.",
+ learn:"Reproducibility: knowing exactly what built an artifact."},
+// M4
+{id:"RAG-040",m:"M4",type:"arch",pts:2,title:"VectorStore port and filters",deps:["RAG-007"],
+ desc:"The contract for storing and searching vectors.",
+ ac:["upsert, search, delete, count","MetadataFilter: equals, in, numeric range (pages)","search returns ids and scores only; text lives in a separate ChunkStore","Shared contract test suite for all stores"],
+ arch:"Separating vectors from text keeps stores swappable and small.",
+ learn:"Separation of concerns in storage."},
+{id:"RAG-041",m:"M4",type:"feature",pts:3,title:"In-memory flat store and ChunkStore",deps:["RAG-040","RAG-033"],
+ desc:"Exact search by comparing against every vector: the reference implementation.",
+ ac:["Brute-force cosine search over all vectors","Top-k with a bounded heap rather than sorting everything","ChunkStore maps id to chunk","Passes the VectorStore contract tests"],
+ arch:"Every faster store is checked against this one.",
+ learn:"Exact vs approximate search; heaps for top-k."},
+{id:"RAG-042",m:"M4",type:"feature",pts:2,title:"Persist the index to disk",deps:["RAG-041"],
+ desc:"Save and load an index without re-embedding.",
+ ac:["Vectors saved as a binary Float32 file plus JSON metadata","Load time logged","Clear errors for corrupted files or mismatched dimensions"],
+ arch:"Persistence is an adapter around the in-memory store, not part of it.",
+ learn:"Binary formats and why JSON arrays of floats are slow."},
+{id:"RAG-043",m:"M4",type:"feature",pts:2,title:"Metadata filtering",deps:["RAG-041"],
+ desc:"Restrict search to a chapter, section or page range.",
+ ac:["Filters applied before scoring","Tests for each filter type","Exposed in the search CLI"],
+ arch:"The web app's \"ask about this chapter\" (RAG-104) relies on this.",
+ learn:"Pre-filtering vs post-filtering."},
+{id:"RAG-044",m:"M4",type:"spike",pts:5,title:"Approximate search with HNSW",deps:["RAG-041"],
+ desc:"Find out what approximate search costs and saves on this book.",
+ ac:["Simplified HNSW written by hand, or hnswlib-node wrapped behind VectorStore","Measure recall@10 against the flat store, and query latency","Findings recorded in an ADR"],
+ arch:"Likely conclusion for one book: flat is fast enough. Learning why is the point.",
+ learn:"Graph-based nearest-neighbour search."},
+{id:"RAG-045",m:"M4",type:"stretch",pts:3,title:"Second vector store adapter",deps:["RAG-040"],
+ desc:"Prove the port by plugging in a real database.",
+ ac:["sqlite-vec or LanceDB adapter","Passes the same contract tests as the in-memory store","Selectable from config"],
+ arch:"A second adapter is the real test of an interface.",
+ learn:"Contract tests paying off."},
+// M5
+{id:"RAG-050",m:"M5",type:"feature",pts:2,title:"Retriever port and dense retriever",deps:["RAG-034","RAG-041"],
+ desc:"Embed the question and find the nearest chunks.",
+ ac:["Retriever interface in core/ports","DenseRetriever: embed query (kind 'query') → store.search → ChunkStore lookup","Results carry rank, score and retriever name"],
+ arch:"The id → chunk mapping step from Lecture 3, section 5e.",
+ learn:"Where the query and index embeddings must match."},
+{id:"RAG-051",m:"M5",type:"feature",pts:5,title:"BM25 retriever, written by hand",deps:["RAG-020"],
+ desc:"Keyword ranking without a library.",
+ ac:["Tokeniser: lowercase, punctuation stripping, optional stopwords","Inverted index with document frequencies","BM25 scoring with configurable k1 (1.2) and b (0.75)","Test against a 3-document example computed by hand","Index persisted alongside the vector index"],
+ arch:"A Retriever like any other: the pipeline can't tell it from the dense one.",
+ learn:"TF, IDF and length normalisation, by hand."},
+{id:"RAG-052",m:"M5",type:"feature",pts:3,title:"Hybrid retriever: RRF and weighted fusion",deps:["RAG-050","RAG-051"],
+ desc:"Combine keyword and meaning-based rankings.",
+ ac:["Fusion strategy interface","Reciprocal Rank Fusion (k = 60) and min–max-normalised weighted sum","HybridRetriever composes any list of retrievers","Tests with fixed input rankings"],
+ arch:"Composite pattern: a retriever made of retrievers.",
+ learn:"Why you can't just add scores from different retrievers."},
+{id:"RAG-053",m:"M5",type:"feature",pts:2,title:"MMR diversification",deps:["RAG-050"],
+ desc:"Avoid filling the context with near-duplicates.",
+ ac:["Maximal Marginal Relevance with configurable λ","Test with deliberately duplicated chunks"],
+ arch:"A post-processing step behind its own small interface.",
+ learn:"Relevance vs diversity trade-offs."},
+{id:"RAG-054",m:"M5",type:"feature",pts:2,title:"Expand children to parents",deps:["RAG-027","RAG-050"],
+ desc:"Small-to-big retrieval for the parent–child chunker.",
+ ac:["When the index uses parent–child chunks, results are replaced by their parents","Duplicate parents merged, keeping the best score"],
+ arch:"A decorator around any Retriever.",
+ learn:"Decorators again, in a new place."},
+{id:"RAG-055",m:"M5",type:"feature",pts:2,title:"Search CLI with retrieval trace",deps:["RAG-052"],
+ desc:"See exactly how each retriever ranked the chunks.",
+ ac:["pnpm search \"question\" prints each retriever's top-k with ranks and scores, the fused list and latency","--json output for tests and scripts","--variant selects a config"],
+ arch:"Built on the Trace from RAG-009.",
+ learn:"Debugging retrieval before blaming the LLM."},
+// M6
+{id:"RAG-060",m:"M6",type:"arch",pts:2,title:"Reranker port, no-op reranker and flag wiring",deps:["RAG-050","RAG-008"],
+ desc:"Make reranking switchable with a flag and no branches in the pipeline.",
+ ac:["Reranker interface in core/ports","NoopReranker returns candidates unchanged","Composition root picks the reranker from rerank.enabled and rerank.strategy","grep shows no rerank flag checks outside composition/"],
+ arch:"Null-object pattern: \"off\" is just another strategy.",
+ learn:"Feature flags without if-statements everywhere."},
+{id:"RAG-061",m:"M6",type:"feature",pts:3,title:"LLM reranker via Ollama",deps:["RAG-060","RAG-070"],
+ desc:"Ask a local model to score each candidate's relevance.",
+ ac:["Pointwise relevance score 0–10 returned as JSON","Output validated with zod; invalid answers retried once","Concurrency limit configurable","Falls back to original order on failure, and logs it"],
+ arch:"Depends on the LlmProvider port, not on Ollama directly.",
+ learn:"Making LLM output machine-readable and safe to trust."},
+{id:"RAG-062",m:"M6",type:"feature",pts:3,title:"Cross-encoder reranker (transformers.js)",deps:["RAG-060"],
+ desc:"A purpose-built reranking model running locally in Node.",
+ ac:["@huggingface/transformers with an MS MARCO MiniLM cross-encoder","Scores query–chunk pairs in batches","Latency and quality compared with the LLM reranker"],
+ arch:"Ollama doesn't serve cross-encoders, so this adapter runs the model in-process.",
+ learn:"Bi-encoders vs cross-encoders (Lecture 3, section 5e)."},
+{id:"RAG-063",m:"M6",type:"test",pts:1,title:"Rerank on/off comparison test",deps:["RAG-061","RAG-055"],
+ desc:"Prove the flag does what it says.",
+ ac:["Same query run with rerank.enabled false and true","Trace shows the original and reranked orders","Snapshot test of the trace"],
+ arch:"Tests the composition root's wiring, not the reranker itself.",
+ learn:"Testing configuration, not just code."},
+// M7
+{id:"RAG-070",m:"M7",type:"feature",pts:3,title:"LLM provider port and Ollama provider",deps:["RAG-007","RAG-010"],
+ desc:"Stream chat responses from a local model.",
+ ac:["LlmProvider interface returning an async iterable of deltas","OllamaProvider calls /api/chat with streaming and parses NDJSON","Cancellable with AbortSignal","Model and options from config"],
+ arch:"Streaming is part of the interface from day one; adding it later would break every caller.",
+ learn:"Async iterables and streaming HTTP."},
+{id:"RAG-071",m:"M7",type:"feature",pts:3,title:"Context assembler (the augmentation step)",deps:["RAG-050","RAG-021"],
+ desc:"Turn retrieved chunks into a well-formed prompt.",
+ ac:["Numbered sources with page citations","Token budget enforced with the Tokenizer","Ordering strategies: relevance-first and sandwich (strongest at start and end)","Near-duplicate chunks removed","System prompt template stored as a versioned file; snapshot tests of assembled prompts"],
+ arch:"Prompt text is data, versioned like code, so eval results can name the prompt version.",
+ learn:"Lost in the middle, applied."},
+{id:"RAG-072",m:"M7",type:"arch",pts:3,title:"RAG pipeline orchestrator",deps:["RAG-060","RAG-070","RAG-071"],
+ desc:"Wire every stage together, built entirely from config.",
+ ac:["RagPipeline receives its stages through its constructor","query → transform → retrieve → rerank → assemble → generate","Returns the answer stream, citations and trace","Constructed only in composition/build-pipeline.ts"],
+ arch:"The pipeline knows only ports; the composition root is the single place that knows concrete classes.",
+ learn:"Dependency injection in a real system."},
+{id:"RAG-073",m:"M7",type:"feature",pts:3,title:"CLI chatbot",deps:["RAG-072"],
+ desc:"The first end-to-end experience: ask the book a question.",
+ ac:["pnpm chat starts a REPL","Answers stream token by token","Sources printed with page numbers","/debug toggles the trace; /config shows the active variant"],
+ arch:"A thin shell over the pipeline; no logic in cli/.",
+ learn:"Seeing the whole system work."},
+{id:"RAG-074",m:"M7",type:"feature",pts:3,title:"Query rewriting and conversation memory",deps:["RAG-073"],
+ desc:"Make follow-up questions work.",
+ ac:["QueryTransformer port","Follow-ups rewritten into standalone questions using the last N turns","HyDE and multi-query available as optional transformers behind flags"],
+ arch:"Transformers chain like cleaners.",
+ learn:"Why \"what about chapter 4?\" fails without rewriting."},
+{id:"RAG-075",m:"M7",type:"feature",pts:2,title:"Grounding guardrails",deps:["RAG-072"],
+ desc:"Say \"not found\" instead of guessing, and keep citations honest.",
+ ac:["Answer \"not found in the book\" when the best retrieval score is below a threshold","Check that every cited [n] exists in the assembled context","Retrieved text clearly separated from instructions in the prompt","Tests for each rule"],
+ arch:"Guardrails sit around generation as decorators, not inside it.",
+ learn:"The Air Canada lesson from Lecture 3."},
+// M8
+{id:"RAG-080",m:"M8",type:"docs",pts:3,title:"Evaluation dataset v1",deps:["RAG-015"],
+ desc:"The questions every variant is judged on.",
+ ac:["40+ questions in evals/datasets/v1.jsonl with question, reference answer and gold pages/spans","Mix of factual, multi-part and at least 5 unanswerable questions","README explaining how questions were written and labelled"],
+ arch:"Gold labels are page spans, not chunk ids, so any chunker can be scored.",
+ learn:"Writing an evaluation set is product thinking, not busywork."},
+{id:"RAG-081",m:"M8",type:"feature",pts:3,title:"Retrieval metrics, written by hand",deps:["RAG-080","RAG-055"],
+ desc:"Measure whether the right passages are found.",
+ ac:["hit@k, recall@k, precision@k, MRR and nDCG@k","A chunk is relevant if its span overlaps a gold span","Unit tests with hand-computed values"],
+ arch:"Pure functions in eval/metrics.",
+ learn:"What each metric rewards."},
+{id:"RAG-082",m:"M8",type:"feature",pts:3,title:"Generation metrics with an LLM judge",deps:["RAG-073","RAG-080"],
+ desc:"Measure whether answers are grounded and relevant.",
+ ac:["Judge port","Faithfulness (claims supported by context), answer relevance, correctness vs reference","Judge prompts versioned; judge model configured separately from the generator"],
+ arch:"The judge is just another LlmProvider consumer.",
+ learn:"LLM-as-judge and its biases."},
+{id:"RAG-083",m:"M8",type:"feature",pts:5,title:"Experiment runner",deps:["RAG-081","RAG-082","RAG-034"],
+ desc:"Run many variants against the dataset with one command.",
+ ac:["evals/experiments/*.json define variants (chunker × embedder × retriever × rerank × k)","Builds or reuses namespaced indexes","Raw results as JSONL plus a summary","Every result records config hash, git commit, dataset version and model names"],
+ arch:"Variants are config files; the runner never special-cases a strategy.",
+ learn:"A/B testing infrastructure."},
+{id:"RAG-084",m:"M8",type:"feature",pts:3,title:"A/B report and first decision",deps:["RAG-083"],
+ desc:"Turn results into a decision.",
+ ac:["Markdown report: metrics per variant, per-question wins and losses, latency and token cost","First ADR choosing default chunker and retriever from the evidence"],
+ arch:"Decisions cite reports; reports cite configs.",
+ learn:"Reading results honestly, including when the fancy option loses."},
+{id:"RAG-085",m:"M8",type:"chore",pts:2,title:"Retrieval regression check",deps:["RAG-083"],
+ desc:"Catch changes that quietly make retrieval worse.",
+ ac:["pnpm eval:smoke runs 10 questions, retrieval only","Fails if recall@5 drops more than a set margin below the stored baseline","Required locally before merging retrieval changes"],
+ arch:"Evaluation becomes part of the PR checklist.",
+ learn:"Regression testing for systems without exact answers."},
+// M9
+{id:"RAG-090",m:"M9",type:"feature",pts:3,title:"Embedding model A/B",deps:["RAG-083","RAG-031"],
+ desc:"Compare Sentence-BERT with larger embedding models.",
+ ac:["Add nomic-embed-text and mxbai-embed-large via Ollama","Per-model query/document prefixes in a model-profile config","Experiment comparing three embedders; report and ADR"],
+ arch:"The query/document kind from RAG-030 pays off here.",
+ learn:"Asymmetric embedding models and why prefixes matter."},
+{id:"RAG-091",m:"M9",type:"feature",pts:3,title:"OpenAI-compatible provider adapter",deps:["RAG-070"],
+ desc:"Reach many inference providers through one adapter.",
+ ac:["Adapter for any OpenAI-compatible chat and embeddings endpoint","API keys from environment only, never logged","Shares contract tests with the Ollama provider"],
+ arch:"Many providers (including Ollama itself) expose this API shape, so one adapter covers them.",
+ learn:"Provider portability and secrets hygiene."},
+{id:"RAG-092",m:"M9",type:"feature",pts:2,title:"Resilience decorators",deps:["RAG-091"],
+ desc:"Retries, timeouts and rate limits for any provider.",
+ ac:["RetryingProvider, TimeoutProvider and RateLimitedProvider wrap any LlmProvider or Embedder","Composed in the composition root from config"],
+ arch:"Cross-cutting concerns as decorators, never inside adapters.",
+ learn:"Stacking decorators."},
+{id:"RAG-093",m:"M9",type:"feature",pts:2,title:"Usage and cost tracking",deps:["RAG-092"],
+ desc:"Know what each answer costs in tokens, time and money.",
+ ac:["Tokens in and out and latency recorded per call in the trace","Price table in config","Experiment reports show cost per 100 questions"],
+ arch:"Another decorator, feeding the Trace.",
+ learn:"Cost as a design constraint."},
+// M10
+{id:"RAG-100",m:"M10",type:"docs",pts:2,title:"ADR: web stack and workspace split",deps:["RAG-073"],
+ desc:"Decide how the live book is built before building it.",
+ ac:["ADR choosing UI stack (e.g. Vite + React) and API framework (e.g. Hono)","If needed, split into a pnpm workspace: packages/core, apps/cli, apps/web","Dependency rules updated for the new layout"],
+ arch:"The core library stays framework-free; apps depend on it, never the reverse.",
+ learn:"Monorepos and package boundaries."},
+{id:"RAG-101",m:"M10",type:"feature",pts:3,title:"HTTP API",deps:["RAG-100","RAG-072"],
+ desc:"Serve the pipeline to the web app.",
+ ac:["POST /ask streams tokens, then citations and trace, as server-sent events","GET /pages/:n and GET /chunks/:id","Request validation with zod; CORS for local development"],
+ arch:"The API is another thin entry point over the composition root.",
+ learn:"Streaming over HTTP."},
+{id:"RAG-102",m:"M10",type:"feature",pts:5,title:"Book reader",deps:["RAG-101"],
+ desc:"Read the book in the browser.",
+ ac:["Renders PDF pages with pdf.js","Table of contents from the section tree","Page navigation and remembered reading position"],
+ arch:"Reuses the section tree from RAG-014.",
+ learn:"Front-end state for a document viewer."},
+{id:"RAG-103",m:"M10",type:"feature",pts:3,title:"Chat panel with clickable citations",deps:["RAG-102"],
+ desc:"Ask questions beside the text and jump to the sources.",
+ ac:["Chat panel streams answers","Citation chips jump to the cited page and highlight the chunk's text"],
+ arch:"Character spans from chunk metadata make highlighting possible.",
+ learn:"Why metadata decided in M0 matters in M10."},
+{id:"RAG-104",m:"M10",type:"feature",pts:3,title:"Ask about a selected passage",deps:["RAG-103","RAG-043"],
+ desc:"Select text and ask about it.",
+ ac:["Selection sent as extra context","Retrieval filtered to the current chapter by default"],
+ arch:"Uses metadata filtering from RAG-043.",
+ learn:"Combining user context with retrieved context."},
+{id:"RAG-105",m:"M10",type:"feature",pts:3,title:"Retrieval inspector panel",deps:["RAG-103"],
+ desc:"A learning view of what happened behind each answer.",
+ ac:["Toggle shows retrieved chunks, scores, which retriever found each, and rerank changes","Shows the assembled prompt and token count"],
+ arch:"Renders the Trace; no new pipeline code.",
+ learn:"Making a system explain itself."},
+{id:"RAG-106",m:"M10",type:"feature",pts:2,title:"Answer feedback loop",deps:["RAG-103"],
+ desc:"Turn reader feedback into future evaluation data.",
+ ac:["Thumbs up or down with an optional note","Saved to evals/candidates.jsonl with the question, answer and trace","Script to promote candidates into the next dataset version"],
+ arch:"Closes the loop from product back to evaluation.",
+ learn:"How real RAG products improve over time."}
+];
+
+const STATUSES = [["todo","To do"],["doing","In progress"],["review","In review"],["done","Done"]];
+const ST_LABEL = Object.fromEntries(STATUSES);
+const byId = Object.fromEntries(T.map(t => [t.id, t]));
+const state = {}; // id -> {status, pr, notes, ac:[bool]}
+let db = null, readOnly = false, mode = "local";
+let fMs = "";
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const st = id => (state[id] && state[id].status) || "todo";
+const depsDone = t => t.deps.every(d => st(d) === "done");
+const branchPrefix = t => ({feature:"feat",arch:"feat",stretch:"feat",chore:"chore",docs:"docs",spike:"spike",test:"test"}[t.type] || "feat");
+const slug = s => s.toLowerCase().replace(/\(.*?\)/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").split("-").slice(0,5).join("-");
+const scopeOf = t => (MS.find(m => m.id === t.m) || {}).scope || "core";
+
+/* ---------- persistence ---------- */
+const LS_KEY = "ragbook-board-v1";
+function loadLocal(){ try { const raw = localStorage.getItem(LS_KEY); if (raw) Object.assign(state, JSON.parse(raw)); } catch(e) {} }
+function saveLocal(){ try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch(e) {} }
+const queues = {};
+function persist(id){
+  const body = Object.assign({status:"todo",pr:"",notes:"",ac:[]}, state[id], {updatedAt:new Date().toISOString()});
+  if (mode !== "db") { saveLocal(); setSave("Saved in this browser only"); return; }
+  setSave("Saving…");
+  queues[id] = (queues[id] || Promise.resolve()).then(() => db.doc("tickets/" + id).set(body))
+    .then(() => setSave("All changes saved"))
+    .catch(e => {
+      if (e && e.code === "invalid_argument") { readOnly = true; setSave("View only: you can't change this board"); renderAll(); }
+      else setSave("Couldn't save. Check your connection and try again.");
+    });
+}
+function setSave(s){ $("#saveState").textContent = s; }
+
+function update(id, patch){
+  if (readOnly) return;
+  state[id] = Object.assign({status:"todo",pr:"",notes:"",ac:[]}, state[id], patch);
+  persist(id);
+  renderAll();
+}
+
+/* ---------- rendering ---------- */
+function filtered(){
+  const q = $("#q").value.trim().toLowerCase(), ty = $("#fType").value, rd = $("#fReady").value;
+  return T.filter(t => {
+    if (fMs && t.m !== fMs) return false;
+    if (ty && t.type !== ty) return false;
+    if (rd === "ready" && !(depsDone(t) && st(t.id) === "todo")) return false;
+    if (rd === "blocked" && depsDone(t)) return false;
+    if (q && !(t.id.toLowerCase().includes(q) || t.title.toLowerCase().includes(q) || t.desc.toLowerCase().includes(q) || t.ac.join(" ").toLowerCase().includes(q))) return false;
+    return true;
+  });
+}
+function acProgress(t){ const a = (state[t.id] && state[t.id].ac) || []; const n = t.ac.filter((_, i) => a[i]).length; return [n, t.ac.length]; }
+
+function renderSummary(){
+  const tot = T.reduce((s,t)=>s+t.pts,0);
+  const by = {todo:0,doing:0,review:0,done:0};
+  T.forEach(t => by[st(t.id)] += t.pts);
+  $("#ovPct").textContent = Math.round(100*by.done/tot) + "%";
+  $("#ovLbl").textContent = `of ${tot} story points done · ${T.filter(t=>st(t.id)==="done").length} of ${T.length} tickets merged`;
+  $("#ovBar").innerHTML = ["done","review","doing","todo"].map(s => `<span style="width:${100*by[s]/tot}%;background:var(--${s})" title="${ST_LABEL[s]}: ${by[s]} pts"></span>`).join("");
+  $("#msStrip").innerHTML = `<button class="ms-chip" data-ms="" aria-pressed="${fMs===""}"><b>ALL</b><span class="nm">All milestones</span><div class="mini"><span style="width:${100*by.done/tot}%"></span></div></button>` +
+    MS.map(m => { const ts = T.filter(t=>t.m===m.id), p = ts.reduce((s,t)=>s+t.pts,0), d = ts.filter(t=>st(t.id)==="done").reduce((s,t)=>s+t.pts,0);
+      return `<button class="ms-chip" data-ms="${m.id}" aria-pressed="${fMs===m.id}"><b>${m.id}</b><span class="nm">${esc(m.name)}</span><div class="mini"><span style="width:${p?100*d/p:0}%"></span></div></button>`; }).join("");
+}
+function card(t){
+  const s = st(t.id), [a, n] = acProgress(t), blocked = !depsDone(t) && s !== "done";
+  return `<div class="card" tabindex="0" draggable="${!readOnly}" data-id="${t.id}" data-st="${s}">
+    <div class="row1"><span class="id">${t.id}</span><span>${t.m}</span><span class="pts">${t.pts} pt${t.pts>1?"s":""}</span></div>
+    <div class="t">${esc(t.title)}</div>
+    <div class="row2"><span class="tag type-${t.type}">${t.type}</span>${blocked?`<span class="tag blocked">blocked</span>`:""}${state[t.id]&&state[t.id].pr?`<span class="tag">PR linked</span>`:""}</div>
+    ${a?`<div class="acbar" title="${a} of ${n} criteria checked"><span style="width:${100*a/n}%"></span></div>`:""}
+  </div>`;
+}
+function renderBoard(){
+  const list = filtered();
+  $("#count").textContent = `${list.length} ticket${list.length===1?"":"s"}`;
+  $("#board").innerHTML = STATUSES.map(([s,label]) => {
+    const items = list.filter(t => st(t.id) === s);
+    return `<div class="col" data-col="${s}"><h3><span class="dot" style="background:var(--${s})"></span>${label}<span class="n">${items.length}</span></h3>
+      ${items.map(card).join("") || `<div class="empty">${s==="todo"?"No tickets match these filters.":"Nothing here yet."}</div>`}</div>`;
+  }).join("");
+}
+function renderRoadmap(){
+  $("#msList").innerHTML = MS.map(m => {
+    const ts = T.filter(t=>t.m===m.id), p = ts.reduce((s,t)=>s+t.pts,0), d = ts.filter(t=>st(t.id)==="done").reduce((s,t)=>s+t.pts,0);
+    return `<div class="panel"><div class="ms-head"><span class="mono" style="color:var(--muted);font-weight:600">${m.id}</span><h3>${esc(m.name)}</h3><span class="pct">${d}/${p} pts</span></div>
+      <p class="ms-goal">${esc(m.goal)}<br><b style="color:var(--ink)">Demo when done:</b> ${esc(m.demo)}</p>
+      <div class="bar"><span style="width:${p?100*d/p:0}%;background:var(--done)"></span></div>
+      <div class="ms-tix">${ts.map(t=>`<button data-open="${t.id}" data-st="${st(t.id)}"><span class="mono">${t.id}</span>${esc(t.title)}</button>`).join("")}</div></div>`;
+  }).join("");
+}
+function renderAll(){ renderSummary(); renderBoard(); renderRoadmap(); if (openId) renderDrawer(openId); }
+
+/* ---------- drawer ---------- */
+let openId = null, lastFocus = null;
+function renderDrawer(id){
+  const t = byId[id]; if (!t) return;
+  const s = st(id), d = state[id] || {}, acs = d.ac || [];
+  const br = `${branchPrefix(t)}/${t.id.toLowerCase()}-${slug(t.title)}`;
+  const commitType = branchPrefix(t) === "spike" ? "docs" : branchPrefix(t);
+  const dis = readOnly ? "disabled" : "";
+  $("#drawer").innerHTML = `
+    <button class="close" id="dClose">Close</button>
+    <div class="mono" style="color:var(--muted);font-size:13px">${t.id} · ${t.m} ${esc((MS.find(m=>m.id===t.m)||{}).name||"")}</div>
+    <h2 id="dTitle">${esc(t.title)}</h2>
+    <div class="meta"><span class="tag type-${t.type}">${t.type}</span><span class="tag">${t.pts} point${t.pts>1?"s":""}</span>${!depsDone(t)&&s!=="done"?`<span class="tag blocked">blocked by dependencies</span>`:""}</div>
+    <h4>Status</h4>
+    <div class="status-pick">${STATUSES.map(([k,l])=>`<button data-s="${k}" aria-pressed="${s===k}" ${dis}>${l}</button>`).join("")}</div>
+    <h4>What and why</h4><p>${esc(t.desc)}</p>
+    <h4>Acceptance criteria</h4>
+    <ul class="ac">${t.ac.map((a,i)=>`<li><input type="checkbox" id="ac-${t.id}-${i}" data-ac="${i}" ${acs[i]?"checked":""} ${dis}><label for="ac-${t.id}-${i}">${esc(a)}</label></li>`).join("")}</ul>
+    <h4>Architecture notes</h4><div class="callout">${esc(t.arch)}</div>
+    <h4>You'll learn</h4><p>${esc(t.learn)}</p>
+    <h4>Depends on</h4>
+    ${t.deps.length?`<div class="deplist">${t.deps.map(x=>`<button data-open="${x}" data-st="${st(x)}" title="${esc(byId[x]?byId[x].title:"")} · ${ST_LABEL[st(x)]}">${x}${st(x)==="done"?" ✓":""}</button>`).join("")}</div>`:`<p style="color:var(--muted)">Nothing. Ready whenever you are.</p>`}
+    <h4>Git</h4>
+    <div class="gitbox">git switch main &amp;&amp; git pull
+git switch -c ${esc(br)}
+
+# commit example
+git commit -m "${commitType}(${scopeOf(t)}): ${esc(t.title.charAt(0).toLowerCase()+t.title.slice(1))}" -m "Refs: ${t.id}"
+
+# PR title
+${t.id}: ${esc(t.title)}</div>
+    <h4><label for="pr-${t.id}">Pull request link</label></h4>
+    <input class="field" id="pr-${t.id}" type="url" placeholder="https://github.com/…/pull/12" value="${esc(d.pr||"")}" ${dis}>
+    <h4><label for="notes-${t.id}">Notes</label></h4>
+    <textarea class="field" id="notes-${t.id}" placeholder="Decisions, blockers, review feedback to remember" ${dis}>${esc(d.notes||"")}</textarea>
+  `;
+}
+function openDrawer(id){
+  if (!byId[id]) return;
+  if (!openId) lastFocus = document.activeElement;
+  openId = id; renderDrawer(id);
+  $("#drawer").hidden = false; $("#scrim").hidden = false;
+  $("#drawer").scrollTop = 0; $("#dClose").focus();
+}
+function closeDrawer(){ openId = null; $("#drawer").hidden = true; $("#scrim").hidden = true; if (lastFocus && lastFocus.focus) lastFocus.focus(); }
+
+/* ---------- events ---------- */
+document.addEventListener("click", e => {
+  const pp = e.target.closest("[data-palette-pick]");
+  if (pp) { setPalette(pp.dataset.palettePick); return; }
+  const tab = e.target.closest("[data-tab]");
+  if (tab) { showTab(tab.dataset.tab); return; }
+  const ms = e.target.closest("[data-ms]");
+  if (ms) { fMs = ms.dataset.ms; renderSummary(); renderBoard(); return; }
+  const op = e.target.closest("[data-open]");
+  if (op) { openDrawer(op.dataset.open); return; }
+  const c = e.target.closest(".card");
+  if (c) { openDrawer(c.dataset.id); return; }
+  if (e.target.id === "dClose" || e.target.id === "scrim") { closeDrawer(); return; }
+  const sp = e.target.closest(".status-pick button");
+  if (sp && openId) { update(openId, {status: sp.dataset.s}); return; }
+  const cp = e.target.closest("[data-copy]");
+  if (cp) {
+    const el = document.getElementById(cp.dataset.copy);
+    const done = () => { cp.textContent = "Copied"; setTimeout(()=>cp.textContent="Copy",1500); };
+    try { navigator.clipboard.writeText(el.textContent).then(done, () => selectText(el)); } catch(err) { selectText(el); }
+  }
+});
+function selectText(el){ const r = document.createRange(); r.selectNodeContents(el); const s = getSelection(); s.removeAllRanges(); s.addRange(r); }
+document.addEventListener("change", e => {
+  if (!openId) return;
+  if (e.target.matches("[data-ac]")) {
+    const acs = ((state[openId] && state[openId].ac) || []).slice();
+    acs[+e.target.dataset.ac] = e.target.checked;
+    update(openId, {ac: acs});
+  } else if (e.target.id === "pr-" + openId) update(openId, {pr: e.target.value.trim()});
+  else if (e.target.id === "notes-" + openId) update(openId, {notes: e.target.value});
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && openId) closeDrawer();
+  if (e.key === "Enter" && e.target.classList && e.target.classList.contains("card")) openDrawer(e.target.dataset.id);
+});
+["q","fType","fReady"].forEach(id => $("#"+id).addEventListener("input", renderBoard));
+
+// drag and drop between columns
+let dragId = null;
+document.addEventListener("dragstart", e => { const c = e.target.closest && e.target.closest(".card"); if (c && !readOnly) { dragId = c.dataset.id; e.dataTransfer.effectAllowed = "move"; } });
+document.addEventListener("dragover", e => { const col = e.target.closest && e.target.closest(".col"); if (col && dragId) { e.preventDefault(); document.querySelectorAll(".col.drop").forEach(x=>x!==col&&x.classList.remove("drop")); col.classList.add("drop"); } });
+document.addEventListener("drop", e => { const col = e.target.closest && e.target.closest(".col"); document.querySelectorAll(".col.drop").forEach(x=>x.classList.remove("drop")); if (col && dragId) { e.preventDefault(); if (st(dragId) !== col.dataset.col) update(dragId, {status: col.dataset.col}); } dragId = null; });
+document.addEventListener("dragend", () => { dragId = null; document.querySelectorAll(".col.drop").forEach(x=>x.classList.remove("drop")); });
+
+function setPalette(p){
+  if (p === "olive") document.documentElement.removeAttribute("data-palette"); else document.documentElement.setAttribute("data-palette", p);
+  document.querySelectorAll("[data-palette-pick]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.palettePick === p)));
+  try { localStorage.setItem("ragbook-palette", p); } catch(e) {}
+}
+setPalette(document.documentElement.getAttribute("data-palette") || "olive");
+function showTab(name){
+  document.querySelectorAll("[data-tab]").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab === name)));
+  document.querySelectorAll("section.view").forEach(s => s.hidden = s.id !== "view-" + name);
+  try { localStorage.setItem("ragbook-tab", name); } catch(e) {}
+  window.scrollTo(0,0);
+}
+const fromHash = (location.hash || "").slice(1);
+let startTab = "board";
+if (["board","roadmap","architecture","conventions","git","ai"].includes(fromHash)) startTab = fromHash;
+else { try { startTab = localStorage.getItem("ragbook-tab") || "board"; } catch(e) {} }
+showTab(startTab);
+
+/* ---------- start ---------- */
+loadLocal();
+renderAll();
+setSave("Saved in this browser only");
+(async () => {
+  const c = window.claude;
+  if (!c || typeof c.use !== "function") return;
+  try {
+    const [d, user] = await Promise.all([c.use("db"), c.use("user")]);
+    if (!d) return;
+    db = d; mode = "db";
+    for (const k of Object.keys(state)) delete state[k];
+    if (user && typeof user.can === "function") {
+      const w = await user.can("data.write");
+      if (w === false) readOnly = true;
+    }
+    setSave(readOnly ? "View only: you can't change this board" : "Synced for everyone with access");
+    db.collection("tickets").onSnapshot(snap => {
+      const seen = new Set();
+      snap.docs.forEach(doc => { if (doc.exists && byId[doc.id]) { const v = doc.data(); state[doc.id] = {status:v.status||"todo",pr:v.pr||"",notes:v.notes||"",ac:Array.isArray(v.ac)?v.ac.slice():[]}; seen.add(doc.id); } });
+      Object.keys(state).forEach(k => { if (!seen.has(k)) delete state[k]; });
+      // keep an open text field from being overwritten while someone types
+      const active = document.activeElement;
+      if (openId && active && (active.id === "notes-" + openId || active.id === "pr-" + openId)) { renderSummary(); renderBoard(); renderRoadmap(); }
+      else renderAll();
+    }, () => setSave("Live sync stopped. Reload to reconnect."));
+  } catch (e) { /* stay in local mode */ }
+})();
+})();
+</script>
+
+<!--claude-mermaid-runtime-begin:3477-->
+<style>.mermaid-diagram{margin-block:4px}.mermaid-diagram svg{display:block;margin:0 auto;max-width:100%;height:auto}</style>
+<script src="/_runtime/mermaid-11.16.1.min.js"></script>
+<script>(function(){
+var CFG={"palettes":{"light":{"surface":"#f4efe4","text":"#42392e","line":"#8a7f6d","border":"#7a6c52","bg":"#fffdf8"},"dark":{"surface":"#262b34","text":"#f2f3f5","line":"#a8adb8","border":"#9aa4b8","bg":"#1f232b"}}};
+if(typeof mermaid==='undefined')return;
+var pres=Array.prototype.slice.call(document.querySelectorAll('pre.mermaid')).filter(function(p){if(p.hasAttribute('data-claude-mermaid-claimed'))return false;p.setAttribute('data-claude-mermaid-claimed','1');return true;});
+if(!pres.length)return;
+var mq=window.matchMedia?window.matchMedia('(prefers-color-scheme: dark)'):null;
+var root=document.documentElement;
+var items=pres.map(function(pre){
+var mount=document.createElement('div');mount.className='mermaid-diagram';
+return {pre:pre,mount:mount,src:pre.textContent||''};
+});
+var seq=0;
+var renderGen=0;
+var lastKey='';
+function pageBg(fallback){
+var els=[document.body,document.documentElement];
+for(var i=0;i<els.length;i++){
+var c=els[i]&&getComputedStyle(els[i]).backgroundColor;
+if(c&&c!=='transparent'&&c!=='rgba(0, 0, 0, 0)')return c;
+}
+return fallback;
+}
+function render(){
+var theme=root.getAttribute('data-theme');
+var dark=theme==='dark'||(!!(mq&&mq.matches)&&theme!=='light');
+var pal=dark?CFG.palettes.dark:CFG.palettes.light;
+var bg=pageBg(pal.bg);
+var key=(dark?'d':'l')+'|'+bg;
+if(key===lastKey)return;
+lastKey=key;
+var gen=++renderGen;
+var font=getComputedStyle(document.body).fontFamily||'sans-serif';
+var nat={useMaxWidth:false};
+mermaid.initialize({
+startOnLoad:false,securityLevel:'strict',theme:'base',
+flowchart:nat,sequence:nat,er:nat,state:nat,class:nat,pie:nat,
+gantt:nat,journey:nat,timeline:nat,gitGraph:nat,mindmap:nat,xyChart:nat,
+quadrantChart:nat,sankey:nat,c4:nat,requirement:nat,block:nat,
+packet:nat,kanban:nat,architecture:nat,radar:nat,
+themeVariables:{background:bg,mainBkg:pal.surface,primaryColor:pal.surface,
+primaryTextColor:pal.text,lineColor:pal.line,primaryBorderColor:pal.border,
+nodeBorder:pal.border,clusterBorder:pal.border,edgeLabelBackground:bg,
+clusterBkg:'rgba(127,127,127,0.07)',titleColor:pal.text,
+darkMode:dark,rowOdd:bg,rowEven:'rgba(127,127,127,0.07)',
+attributeBackgroundColorOdd:bg,attributeBackgroundColorEven:'rgba(127,127,127,0.07)',
+fontSize:'16px',fontFamily:font},
+themeCSS:'.node rect, .node circle, .node polygon, .node path, .cluster rect { stroke-width: 2px; }'
+});
+items.forEach(function(it){
+var id='claude-mermaid-'+seq++;
+mermaid.render(id,it.src).then(function(r){
+if(gen!==renderGen)return;
+var prev=it.pre.previousElementSibling;
+if(prev&&prev.className==='mermaid-diagram'&&prev!==it.mount)return;
+it.mount.innerHTML=r.svg;
+if(!it.mount.parentNode)it.pre.parentNode.insertBefore(it.mount,it.pre);
+it.pre.style.display='none';
+},function(){
+var scratch=document.getElementById(id);
+if(scratch)scratch.parentNode.removeChild(scratch);
+scratch=document.getElementById('d'+id);
+if(scratch)scratch.parentNode.removeChild(scratch);
+if(gen!==renderGen)return;
+if(it.mount.parentNode)it.mount.parentNode.removeChild(it.mount);
+it.pre.style.display='';
+});
+});
+}
+render();
+if(mq&&mq.addEventListener)mq.addEventListener('change',render);
+if(typeof MutationObserver!=='undefined')new MutationObserver(render).observe(root,{attributes:true,attributeFilter:['data-theme']});
+})();</script>
+<!--claude-mermaid-runtime-end-->
+
+</body></html>
