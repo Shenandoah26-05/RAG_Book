@@ -43,6 +43,7 @@
     "vitest": "^3.2.7"
   },
   "dependencies": {
+    "js-tiktoken": "^1.0.21",
     "pdfjs-dist": "^6.3.289",
     "unpdf": "^1.8.1",
     "uuid": "^14.0.2",

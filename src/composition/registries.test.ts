@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_CONFIG } from "../config/index.js";
 import { RagError } from "../shared/index.js";
 import { makeDocument, pageTexts } from "../testing/make-document.testing.js";
-import { buildCleaner, cleanerNames } from "./registries.js";
+import { buildCleaner, buildTokenizer, cleanerNames, tokenizerNames } from "./registries.js";
 
 const FI = String.fromCodePoint(0xfb01);
 
@@ -53,5 +53,33 @@ describe("buildCleaner", () => {
     expect((error as RagError).code).toBe("CONFIG_INVALID");
     expect((error as RagError).message).toContain('"spellcheck"');
     expect((error as RagError).message).toContain("dehyphenate");
+  });
+});
+
+describe("buildTokenizer", () => {
+  it("knows the two tokenizers by their config names", () => {
+    expect(tokenizerNames()).toEqual(["approx", "tiktoken"]);
+  });
+
+  it("builds the tokenizer named in config", () => {
+    expect(buildTokenizer("approx").name).toBe("approx");
+    expect(buildTokenizer("tiktoken").name).toBe("tiktoken");
+  });
+
+  it("builds the default configuration's tokenizer", () => {
+    expect(buildTokenizer(DEFAULT_CONFIG.chunking.tokenizer).name).toBe("approx");
+  });
+
+  it("rejects an unknown name and lists the ones that exist", () => {
+    let error: unknown;
+    try {
+      buildTokenizer("gpt2");
+    } catch (e) {
+      error = e;
+    }
+    expect(error).toBeInstanceOf(RagError);
+    expect((error as RagError).code).toBe("CONFIG_INVALID");
+    expect((error as RagError).message).toContain('"gpt2"');
+    expect((error as RagError).message).toContain("tiktoken");
   });
 });

@@ -28,6 +28,7 @@ export const ragConfigSchema = z
     chunking: z
       .strictObject({
         strategy: name,
+        tokenizer: name,
         maxTokens: positiveInt,
         overlapTokens: z
           .number("must be a number")

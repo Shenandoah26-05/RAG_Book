@@ -12,7 +12,7 @@ export const DEFAULT_CONFIG: RagConfig = {
     loader: "pdfjs",
     cleaners: ["unicode", "page-numbers", "headers-footers", "dehyphenate"],
   },
-  chunking: { strategy: "recursive", maxTokens: 400, overlapTokens: 60 },
+  chunking: { strategy: "recursive", tokenizer: "approx", maxTokens: 400, overlapTokens: 60 },
   embedding: { provider: "ollama", model: "all-minilm", batchSize: 32 },
   vectorStore: { type: "in-memory", dir: "data/index" },
   retrieval: { strategy: "hybrid", k: 5, fusion: "rrf" },

@@ -63,5 +63,11 @@ Imports use the `.js` extension (`from "./x.js"`) because the project is ESM (`m
 - **A new strategy or adapter**: one class in `strategies/<kind>/` or `adapters/<kind>/` implementing a
   port from `core/ports/`, exported from the folder's `index.ts`, plus one registry line in
   `composition/`.
+- **Tokens, not characters**: chunk sizes and prompt budgets are counted with a `Tokenizer`
+  (`core/ports/tokenizer.ts`). `ApproxTokenizer` (characters ÷ 4, the default) and `TiktokenTokenizer`
+  (js-tiktoken, cl100k_base) live in `adapters/tokenizers/`; `chunking.tokenizer` picks one through
+  `buildTokenizer`. Chunkers and the context assembler get it through their constructor. Counts are
+  estimates for local models, so leave a margin. New tokenizers must pass
+  `describeTokenizerContract` (`src/testing/tokenizer-contract.testing.ts`).
 - **Needing something from a layer above you**: that is the signal to introduce a port in `core/`
   instead of importing upwards.
