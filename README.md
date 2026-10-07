@@ -51,7 +51,8 @@ The `data/` folder is git-ignored.
 ## Documentation
 
 - [docs/setup.md](docs/setup.md): install Ollama, pull the models, run `pnpm run doctor`.
-- [docs/architecture.md](docs/architecture.md): layers and import rules.
+- [docs/architecture.md](docs/architecture.md): layers, import rules, and how to add a chunking strategy.
+- [docs/design/](docs/design/rag-020-chunker-port.md): design documents, with diagrams (RAG-020: the chunk contract).
 - [docs/adr/](docs/adr/): architecture decision records. Start with
   [ADR-0001: ports and adapters](docs/adr/0001-ports-and-adapters.md). Copy
   [0000-template.md](docs/adr/0000-template.md) for new ones.
