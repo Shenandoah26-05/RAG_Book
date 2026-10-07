@@ -1,4 +1,5 @@
 // Public API of src/core/ports. Named exports only.
+export type { Chunker } from "./chunker.js";
 export type { Cleaner } from "./cleaner.js";
 export type { DocumentLoader } from "./document-loader.js";
 export type { DocumentStore } from "./document-store.js";
