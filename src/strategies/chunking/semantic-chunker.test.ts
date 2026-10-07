@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { makeChunkId } from "../../core/index.js";
-import type { CharSpan, Chunk, Embedder, ParsedDocument } from "../../core/index.js";
+import type { Chunk, Embedder, ParsedDocument } from "../../core/index.js";
 import { RagError, createJsonLogger } from "../../shared/index.js";
 import { makeDocument } from "../../testing/make-document.testing.js";
+import { describeChunkerContract } from "../../testing/chunker-contract.testing.js";
 import { splitSentencesBasic } from "./basic-sentence-splitter.js";
+import { createChunk } from "./chunk-builder.js";
 import { SemanticChunker } from "./semantic-chunker.js";
 import type { SemanticChunkerOptions } from "./semantic-chunker.js";
 
@@ -33,25 +34,6 @@ function fakeEmbedder(): Embedder & {
     },
   };
 }
-
-const createChunk = (
-  doc: ParsedDocument,
-  strategy: string,
-  span: CharSpan,
-  text: string,
-): Chunk => ({
-  id: makeChunkId({ docId: doc.id, strategy, charStart: span.start, charEnd: span.end, text }),
-  text,
-  metadata: {
-    docId: doc.id,
-    pageStart: 1,
-    pageEnd: 1,
-    sectionPath: [],
-    charStart: span.start,
-    charEnd: span.end,
-    strategy,
-  },
-});
 
 function chunker(
   overrides: Partial<SemanticChunkerOptions> = {},
@@ -196,3 +178,16 @@ describe("SemanticChunker: logging", () => {
     expect(record).toMatchObject({ sentences: 4, chunks: 4, topicBreaks: 1, sizeBreaks: 2 });
   });
 });
+
+// The shared contract from RAG-020, with the real createChunk and a topic-based fake embedder.
+describeChunkerContract(
+  "semantic chunker",
+  () =>
+    new SemanticChunker({
+      embedder: fakeEmbedder(),
+      splitSentences: splitSentencesBasic,
+      createChunk,
+      breakRule: { kind: "percentile", value: 30 },
+      maxTokens: 50,
+    }),
+);
