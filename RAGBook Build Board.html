@@ -1004,10 +1004,11 @@ let db = null, readOnly = false, mode = "local";
 let fMs = "";
 const $ = (s, el = document) => el.querySelector(s);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-// Ledger closed through RAG-028: those tickets are Done and locked, except the ones still open below.
-const CLOSED_THROUGH = "RAG-028";
-// RAG-026 (semantic chunker) needs the embedder (RAG-031), so it is not built yet.
-const STILL_OPEN = new Set(["RAG-026"]);
+// Ledger closed through RAG-033: those tickets are Done and locked, except the ones still open below.
+const CLOSED_THROUGH = "RAG-033";
+// RAG-026 (semantic chunker) is unblocked by the embedder (RAG-031) but not built yet; RAG-032
+// (caching embedder) is not built yet either.
+const STILL_OPEN = new Set(["RAG-026", "RAG-032"]);
 const locked = id => id <= CLOSED_THROUGH && !STILL_OPEN.has(id);
 const st = id => locked(id) ? "done" : (state[id] && state[id].status) || "todo";
 const depsDone = t => t.deps.every(d => st(d) === "done");
