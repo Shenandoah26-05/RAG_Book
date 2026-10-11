@@ -1,5 +1,5 @@
-import { PdfJsLoader, UnpdfLoader } from "../adapters/index.js";
-import type { Cleaner, DocumentLoader } from "../core/index.js";
+import { ApproxTokenizer, PdfJsLoader, TiktokenTokenizer, UnpdfLoader } from "../adapters/index.js";
+import type { Cleaner, DocumentLoader, Tokenizer } from "../core/index.js";
 import { RagError } from "../shared/index.js";
 import {
   CleaningChain,
@@ -58,4 +58,24 @@ export function buildCleaner(names: readonly string[]): Cleaner {
     return create();
   });
   return new CleaningChain(cleaners);
+}
+
+const TOKENIZERS: ReadonlyMap<string, () => Tokenizer> = new Map<string, () => Tokenizer>([
+  ["approx", () => new ApproxTokenizer()],
+  ["tiktoken", () => new TiktokenTokenizer()],
+]);
+
+/** The names accepted in `chunking.tokenizer`. */
+export const tokenizerNames = (): readonly string[] => [...TOKENIZERS.keys()];
+
+/** Builds the tokenizer named in `chunking.tokenizer`. Throws CONFIG_INVALID if there is no such tokenizer. */
+export function buildTokenizer(name: string): Tokenizer {
+  const create = TOKENIZERS.get(name);
+  if (create === undefined) {
+    throw new RagError(
+      "CONFIG_INVALID",
+      `Unknown tokenizer "${name}" in chunking.tokenizer. Known tokenizers: ${tokenizerNames().join(", ")}`,
+    );
+  }
+  return create();
 }
