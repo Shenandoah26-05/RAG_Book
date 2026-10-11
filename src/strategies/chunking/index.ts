@@ -22,6 +22,6 @@ export type { RecursiveChunkerOptions } from "./recursive-chunker.js";
 export { DEFAULT_SEPARATORS } from "./recursive-split.js";
 export type { TokenCounter } from "./recursive-split.js";
 export { SemanticChunker } from "./semantic-chunker.js";
-export type { ChunkFactory, SemanticChunkerOptions } from "./semantic-chunker.js";
-export { cosineSimilarity, findBreakpoints } from "./semantic-breakpoints.js";
+export type { SemanticChunkerOptions } from "./semantic-chunker.js";
+export { findBreakpoints } from "./semantic-breakpoints.js";
 export type { BreakRule } from "./semantic-breakpoints.js";

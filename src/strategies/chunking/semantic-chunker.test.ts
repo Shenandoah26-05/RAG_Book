@@ -4,7 +4,7 @@ import { RagError, createJsonLogger } from "../../shared/index.js";
 import { makeDocument } from "../../testing/make-document.testing.js";
 import { describeChunkerContract } from "../../testing/chunker-contract.testing.js";
 import { splitSentencesBasic } from "./basic-sentence-splitter.js";
-import { createChunk } from "./chunk-builder.js";
+import { fixedWidthTokenizer } from "../../testing/fake-tokenizer.testing.js";
 import { SemanticChunker } from "./semantic-chunker.js";
 import type { SemanticChunkerOptions } from "./semantic-chunker.js";
 
@@ -41,8 +41,8 @@ function chunker(
 ): SemanticChunker {
   return new SemanticChunker({
     embedder,
+    tokenizer: fixedWidthTokenizer(4),
     splitSentences: splitSentencesBasic,
-    createChunk,
     breakRule: { kind: "threshold", value: 0.5 },
     maxTokens: 1000,
     ...overrides,
@@ -99,9 +99,10 @@ describe("SemanticChunker: where it breaks", () => {
   });
 
   it("uses the given token counter", async () => {
-    const chunks = await chunker({ maxTokens: 2, countTokens: () => 1 }).chunk(
-      doc("A cat sat. A cat ran. A cat hid. A cat ate."),
-    );
+    const chunks = await chunker({
+      maxTokens: 2,
+      tokenizer: { ...fixedWidthTokenizer(), count: () => 1 },
+    }).chunk(doc("A cat sat. A cat ran. A cat hid. A cat ate."));
     expect(chunks).toHaveLength(2);
   });
 });
@@ -179,15 +180,41 @@ describe("SemanticChunker: logging", () => {
   });
 });
 
-// The shared contract from RAG-020, with the real createChunk and a topic-based fake embedder.
+// The shared contract from RAG-020, with a topic-based fake embedder.
 describeChunkerContract(
   "semantic chunker",
   () =>
     new SemanticChunker({
       embedder: fakeEmbedder(),
+      tokenizer: fixedWidthTokenizer(4),
       splitSentences: splitSentencesBasic,
-      createChunk,
       breakRule: { kind: "percentile", value: 30 },
       maxTokens: 50,
     }),
 );
+
+describe("SemanticChunker: options", () => {
+  it.each([
+    { maxTokens: 0 },
+    { maxTokens: 1.5 },
+    { maxTokens: 10, minTokens: 10 },
+    { maxTokens: 10, minTokens: -1 },
+  ])("rejects %o", (bad) => {
+    try {
+      chunker(bad);
+      expect.unreachable("the constructor should have thrown");
+    } catch (error) {
+      expect((error as RagError).code).toBe("CONFIG_INVALID");
+    }
+  });
+
+  it("uses the simple sentence splitter when none is given", async () => {
+    const chunks = await new SemanticChunker({
+      embedder: fakeEmbedder(),
+      tokenizer: fixedWidthTokenizer(4),
+      breakRule: { kind: "threshold", value: 0.5 },
+      maxTokens: 1000,
+    }).chunk(doc(TWO_TOPICS));
+    expect(chunks).toHaveLength(2);
+  });
+});

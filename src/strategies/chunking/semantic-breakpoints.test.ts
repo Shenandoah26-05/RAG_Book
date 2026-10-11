@@ -1,24 +1,7 @@
 import { describe, expect, it } from "vitest";
-import {
-  cosineSimilarity,
-  findBreakpoints,
-  neighbourSimilarities,
-  percentile,
-} from "./semantic-breakpoints.js";
+import { findBreakpoints, neighbourSimilarities, percentile } from "./semantic-breakpoints.js";
 
 const v = (...values: number[]): Float32Array => Float32Array.from(values);
-
-describe("cosineSimilarity", () => {
-  it("is 1 for the same direction, 0 for perpendicular, -1 for opposite", () => {
-    expect(cosineSimilarity(v(1, 2), v(2, 4))).toBeCloseTo(1);
-    expect(cosineSimilarity(v(1, 0), v(0, 1))).toBeCloseTo(0);
-    expect(cosineSimilarity(v(1, 0), v(-1, 0))).toBeCloseTo(-1);
-  });
-
-  it("is 0, not NaN, when a vector has no length", () => {
-    expect(cosineSimilarity(v(0, 0), v(1, 1))).toBe(0);
-  });
-});
 
 describe("neighbourSimilarities", () => {
   it("gives n - 1 values for n vectors, and none for fewer than two", () => {

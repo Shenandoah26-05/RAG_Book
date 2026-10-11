@@ -1,24 +1,11 @@
+import { cosine } from "../ranking/index.js";
+
 /** Where the topic shifts, decided from the similarity of each pair of neighbouring sentences. */
 export type BreakRule =
   /** Break where the similarity is below this value (cosine similarity, -1 to 1). */
   | { readonly kind: "threshold"; readonly value: number }
   /** Break at the lowest `value` percent of similarities in the document (0 to 100). */
   | { readonly kind: "percentile"; readonly value: number };
-
-/** Cosine similarity of two vectors. 0 when either has no length, so it never returns NaN. */
-export function cosineSimilarity(a: Float32Array, b: Float32Array): number {
-  let dot = 0;
-  let normA = 0;
-  let normB = 0;
-  for (let i = 0; i < a.length; i++) {
-    const x = a[i] ?? 0;
-    const y = b[i] ?? 0;
-    dot += x * y;
-    normA += x * x;
-    normB += y * y;
-  }
-  return normA === 0 || normB === 0 ? 0 : dot / Math.sqrt(normA * normB);
-}
 
 /** Similarity of each sentence with the next one: `n` vectors give `n - 1` values. */
 export function neighbourSimilarities(vectors: readonly Float32Array[]): number[] {
@@ -27,7 +14,7 @@ export function neighbourSimilarities(vectors: readonly Float32Array[]): number[
     const previous = vectors[i - 1];
     const current = vectors[i];
     if (previous !== undefined && current !== undefined) {
-      result.push(cosineSimilarity(previous, current));
+      result.push(cosine(previous, current));
     }
   }
   return result;
