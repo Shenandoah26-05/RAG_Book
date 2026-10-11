@@ -1004,7 +1004,10 @@ let db = null, readOnly = false, mode = "local";
 let fMs = "";
 const $ = (s, el = document) => el.querySelector(s);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const st = id => (state[id] && state[id].status) || "todo";
+// Ledger closed through RAG-023: those tickets are Done and locked.
+const CLOSED_THROUGH = "RAG-023";
+const locked = id => id <= CLOSED_THROUGH;
+const st = id => locked(id) ? "done" : (state[id] && state[id].status) || "todo";
 const depsDone = t => t.deps.every(d => st(d) === "done");
 const branchPrefix = t => ({feature:"feat",arch:"feat",stretch:"feat",chore:"chore",docs:"docs",spike:"spike",test:"test"}[t.type] || "feat");
 const slug = s => s.toLowerCase().replace(/\(.*?\)/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").split("-").slice(0,5).join("-");
@@ -1029,7 +1032,7 @@ function persist(id){
 function setSave(s){ $("#saveState").textContent = s; }
 
 function update(id, patch){
-  if (readOnly) return;
+  if (readOnly || locked(id)) return;
   state[id] = Object.assign({status:"todo",pr:"",notes:"",ac:[]}, state[id], patch);
   persist(id);
   renderAll();
@@ -1062,7 +1065,7 @@ function renderSummary(){
 }
 function card(t){
   const s = st(t.id), [a, n] = acProgress(t), blocked = !depsDone(t) && s !== "done";
-  return `<div class="card" tabindex="0" draggable="${!readOnly}" data-id="${t.id}" data-st="${s}">
+  return `<div class="card" tabindex="0" draggable="${!readOnly && !locked(t.id)}" data-id="${t.id}" data-st="${s}">
     <div class="row1"><span class="id">${t.id}</span><span>${t.m}</span><span class="pts">${t.pts} pt${t.pts>1?"s":""}</span></div>
     <div class="t">${esc(t.title)}</div>
     <div class="row2"><span class="tag type-${t.type}">${t.type}</span>${blocked?`<span class="tag blocked">blocked</span>`:""}${state[t.id]&&state[t.id].pr?`<span class="tag">PR linked</span>`:""}</div>
@@ -1096,7 +1099,7 @@ function renderDrawer(id){
   const s = st(id), d = state[id] || {}, acs = d.ac || [];
   const br = `${branchPrefix(t)}/${t.id.toLowerCase()}-${slug(t.title)}`;
   const commitType = branchPrefix(t) === "spike" ? "docs" : branchPrefix(t);
-  const dis = readOnly ? "disabled" : "";
+  const dis = readOnly || locked(t.id) ? "disabled" : "";
   $("#drawer").innerHTML = `
     <button class="close" id="dClose">Close</button>
     <div class="mono" style="color:var(--muted);font-size:13px">${t.id} · ${t.m} ${esc((MS.find(m=>m.id===t.m)||{}).name||"")}</div>
@@ -1175,7 +1178,7 @@ document.addEventListener("keydown", e => {
 
 // drag and drop between columns
 let dragId = null;
-document.addEventListener("dragstart", e => { const c = e.target.closest && e.target.closest(".card"); if (c && !readOnly) { dragId = c.dataset.id; e.dataTransfer.effectAllowed = "move"; } });
+document.addEventListener("dragstart", e => { const c = e.target.closest && e.target.closest(".card"); if (c && !readOnly && !locked(c.dataset.id)) { dragId = c.dataset.id; e.dataTransfer.effectAllowed = "move"; } });
 document.addEventListener("dragover", e => { const col = e.target.closest && e.target.closest(".col"); if (col && dragId) { e.preventDefault(); document.querySelectorAll(".col.drop").forEach(x=>x!==col&&x.classList.remove("drop")); col.classList.add("drop"); } });
 document.addEventListener("drop", e => { const col = e.target.closest && e.target.closest(".col"); document.querySelectorAll(".col.drop").forEach(x=>x.classList.remove("drop")); if (col && dragId) { e.preventDefault(); if (st(dragId) !== col.dataset.col) update(dragId, {status: col.dataset.col}); } dragId = null; });
 document.addEventListener("dragend", () => { dragId = null; document.querySelectorAll(".col.drop").forEach(x=>x.classList.remove("drop")); });

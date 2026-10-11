@@ -16,6 +16,7 @@
     "export:markdown": "tsx scripts/export-markdown.ts",
     "compare:extractors": "tsx scripts/compare-extractors.ts",
     "doctor": "tsx src/cli/doctor.ts",
+    "show:board": "tsx scripts/show-board.ts",
     "deps:check": "depcruise src --config .dependency-cruiser.mjs",
     "format": "prettier --write .",
     "prepare": "husky"
