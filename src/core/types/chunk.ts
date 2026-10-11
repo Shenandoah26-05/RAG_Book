@@ -16,6 +16,12 @@ export interface ChunkMetadata {
 
 export interface Chunk {
   readonly id: ChunkId;
+  /** The passage, kept raw: what is shown to the reader and sent to the LLM. */
   readonly text: string;
+  /**
+   * What the embedder sees, when it should differ from `text`: the structure-aware chunker puts the
+   * heading path in front ("Chapter 3 > 3.2 Embeddings"). Absent means "embed `text`".
+   */
+  readonly embedText?: string;
   readonly metadata: ChunkMetadata;
 }
