@@ -1,2 +1,2 @@
 // Public API of src/strategies/chunking. Named exports only.
-export {};
+export { createChunk, pageRangeOf, sectionPathAt } from "./chunk-builder.js";

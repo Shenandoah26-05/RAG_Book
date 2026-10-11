@@ -65,3 +65,20 @@ Imports use the `.js` extension (`from "./x.js"`) because the project is ESM (`m
   `composition/`.
 - **Needing something from a layer above you**: that is the signal to introduce a port in `core/`
   instead of importing upwards.
+
+## Adding a chunking strategy
+
+Every chunker implements the `Chunker` port (`core/ports/chunker.ts`) and follows the contract in
+[ADR-0003](adr/0003-chunk-contract.md). To add one:
+
+1. Write the class in `strategies/chunking/`. It decides where chunks start and end, and builds each
+   chunk with `createChunk` (`strategies/chunking/chunk-builder.ts`), which fills in the page range,
+   the section path and the id.
+2. Register it in the composition root: `registry.register("my-strategy", (context) => new MyChunker(...))`
+   on the `ChunkerRegistry` (`composition/chunker-registry.ts`). A chunker made of other chunkers asks
+   the context for them: `context.create("recursive")`.
+3. In its test file, call `describeChunkerContract("my-strategy", () => new MyChunker(...))`
+   (`src/testing/chunker-contract.testing.ts`). It runs the chunker on eight fixture documents and
+   checks the whole contract. A chunker is not done until that passes.
+
+The design, with diagrams, is in [docs/design/rag-020-chunker-port.md](design/rag-020-chunker-port.md).
