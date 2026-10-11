@@ -12,6 +12,7 @@ export function fixedWidthTokenizer(size = 4): Tokenizer {
     return result;
   };
   return {
+    name: "fake",
     count: (text) => spans(text).length,
     encode: (text) => spans(text).map((_, index) => index),
     tokenSpans: spans,
@@ -26,6 +27,7 @@ export function wordTokenizer(): Tokenizer {
       end: m.index + m[0].length,
     }));
   return {
+    name: "fake",
     count: (text) => spans(text).length,
     encode: (text) => spans(text).map((_, index) => index),
     tokenSpans: spans,

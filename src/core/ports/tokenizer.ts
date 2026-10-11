@@ -9,12 +9,16 @@ import type { CharSpan } from "../types/document.js";
  * about where a token sits in the text. RAG-021 owns this port and must keep `tokenSpans`.
  */
 export interface Tokenizer {
+  /** The name used in config, e.g. "approx". */
+  readonly name: string;
   /** The number of tokens in `text`. Equals `encode(text).length` and `tokenSpans(text).length`. */
   count(text: string): number;
   encode(text: string): readonly number[];
   /**
    * Where each token sits in `text`, in order. The spans are contiguous, do not overlap, and
-   * together cover the whole string, so whitespace belongs to some token.
+   * together cover the whole string, so whitespace belongs to some token. A character that the
+   * vocabulary splits across several tokens (an emoji, say) belongs to the first of them; the
+   * others get an empty span right after it.
    */
   tokenSpans(text: string): readonly CharSpan[];
 }

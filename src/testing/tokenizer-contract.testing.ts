@@ -49,6 +49,21 @@ export function describeTokenizerContract(label: string, create: () => Tokenizer
       }
     });
 
+    it("gives one span per token, which are in order, join up and cover the text", () => {
+      for (const text of SAMPLES) {
+        const spans = tokenizer.tokenSpans(text);
+        expect(spans).toHaveLength(tokenizer.count(text));
+        let end = 0;
+        for (const span of spans) {
+          expect(span.start).toBe(end);
+          expect(span.end).toBeGreaterThanOrEqual(span.start);
+          end = span.end;
+        }
+        expect(end).toBe(text.length);
+      }
+      expect(tokenizer.tokenSpans("")).toEqual([]);
+    });
+
     it("returns whole numbers as ids", () => {
       for (const text of SAMPLES) {
         for (const id of tokenizer.encode(text)) expect(Number.isInteger(id)).toBe(true);
