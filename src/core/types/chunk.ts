@@ -23,5 +23,11 @@ export interface Chunk {
    * heading path in front ("Chapter 3 > 3.2 Embeddings"). Absent means "embed `text`".
    */
   readonly embedText?: string;
+  /**
+   * Set on the small chunks of the parent-child strategy: the id of the larger chunk the answer is
+   * built from. The parent is not itself indexed; it is stored (see `Chunker.parents`) and looked
+   * up by this id. Absent on every other chunk.
+   */
+  readonly parentId?: ChunkId;
   readonly metadata: ChunkMetadata;
 }

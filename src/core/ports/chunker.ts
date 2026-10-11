@@ -21,10 +21,19 @@ import type { ParsedDocument } from "../types/document.js";
  * 5. `docId`, `strategy` (equal to `name`) and ids are correct, and ids are unique.
  * 6. The same document gives the same chunks, and the document is not modified.
  * 7. A document with no text gives no chunks.
+ *
+ * Small-to-big strategies also implement `parents`. The chunks from `chunk()` are then the small
+ * ones that get searched, each with a `parentId`, and `parents()` returns the larger chunks they
+ * point to. The rules above apply to `parents()` as well, and every `parentId` must name one of them.
  */
 export interface Chunker {
   /** The name used in config, e.g. "fixed-size". It is also written to `metadata.strategy`. */
   readonly name: string;
   /** The chunks of the document, in document order. Async because some strategies call a model. */
   chunk(doc: ParsedDocument): Promise<readonly Chunk[]>;
+  /**
+   * The larger chunks that the chunks from `chunk()` point to through `parentId`, in document order.
+   * Only strategies that search small and answer big implement it; for all others it is absent.
+   */
+  parents?(doc: ParsedDocument): Promise<readonly Chunk[]>;
 }
