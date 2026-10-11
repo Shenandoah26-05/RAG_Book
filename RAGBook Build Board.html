@@ -1004,8 +1004,8 @@ let db = null, readOnly = false, mode = "local";
 let fMs = "";
 const $ = (s, el = document) => el.querySelector(s);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-// Ledger closed through RAG-023: those tickets are Done and locked.
-const CLOSED_THROUGH = "RAG-023";
+// Ledger closed through RAG-025: those tickets are Done and locked.
+const CLOSED_THROUGH = "RAG-025";
 const locked = id => id <= CLOSED_THROUGH;
 const st = id => locked(id) ? "done" : (state[id] && state[id].status) || "todo";
 const depsDone = t => t.deps.every(d => st(d) === "done");
