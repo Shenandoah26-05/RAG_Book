@@ -31,6 +31,7 @@ pnpm test
 | `pnpm format`                   | Format everything with Prettier                                 |
 | `pnpm compare:extractors <pdf>` | Compare the two PDF loaders on a file (ADR-0002)                |
 | `pnpm ingest <pdf> [--force]`   | Turn a PDF into a processed document in `data/processed/`       |
+| `pnpm chunks <pdf or docId>`    | Chunk a processed document; print stats, write the chunks file  |
 | `pnpm export:markdown <pdf>`    | Load, clean and find sections; print an outline, write Markdown |
 | `pnpm run doctor`               | Check that Ollama is running and has the models                 |
 | `pnpm deps:check`               | Check the layer rules in `docs/architecture.md`                 |

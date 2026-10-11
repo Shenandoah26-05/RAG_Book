@@ -1,4 +1,4 @@
-import type { Tokenizer } from "../../core/index.js";
+import type { CharSpan, Tokenizer } from "../../core/index.js";
 
 const CHARS_PER_TOKEN = 4;
 
@@ -25,5 +25,13 @@ export class ApproxTokenizer implements Tokenizer {
       ids.push(id);
     }
     return ids;
+  }
+
+  tokenSpans(text: string): readonly CharSpan[] {
+    const spans: CharSpan[] = [];
+    for (let start = 0; start < text.length; start += CHARS_PER_TOKEN) {
+      spans.push({ start, end: Math.min(start + CHARS_PER_TOKEN, text.length) });
+    }
+    return spans;
   }
 }
