@@ -7,3 +7,4 @@ export type { EmbedKind, Embedder } from "./embedder.js";
 export type { ModelHost } from "./model-host.js";
 export type { SectionDetector } from "./section-detector.js";
 export type { Tokenizer } from "./tokenizer.js";
+export type { VectorStore } from "./vector-store.js";
