@@ -221,6 +221,37 @@ describe("the vector store contract catches broken stores", () => {
   });
 });
 
+describe("the vector store contract and ties", () => {
+  /** Swaps the two named records where they sit next to each other with (nearly) equal scores. */
+  const swapped = (a: string, b: string): Make =>
+    brokenSearch((hits) => {
+      const out = [...hits];
+      for (let i = 0; i + 1 < out.length; i += 1) {
+        const first = out[i];
+        const second = out[i + 1];
+        const close = first && second && Math.abs(first.score - second.score) < 1e-6;
+        if (close && [a, b].includes(first.id) && [a, b].includes(second.id)) {
+          out[i] = second;
+          out[i + 1] = first;
+          i += 1;
+        }
+      }
+      return out;
+    });
+
+  it("lets two records swap places when their scores differ only by rounding", async () => {
+    // c03 and c04 tie on one fixture query up to rounding
+    const violations = await checkVectorStore(swapped("c03", "c04"));
+    expect(violations.map((v) => v.code)).toEqual([]);
+  });
+
+  it("still requires identical vectors to be ordered by id", async () => {
+    // c10 and c11 have the very same vector, so their order is decided by id alone
+    const found = (await checkVectorStore(swapped("c10", "c11"))).map((v) => v.code);
+    expect(found).toContain("wrong-hits");
+  });
+});
+
 describe("formatVectorStoreViolations", () => {
   it("writes one readable line per violation", () => {
     expect(

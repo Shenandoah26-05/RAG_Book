@@ -98,8 +98,7 @@ file-backed store.
 
 ## 5. Open points for later tickets
 
-- **Evaluating filters.** The contract has its own matcher so it checks stores independently. RAG-041
-  needs one to filter, and RAG-043 makes filtering a feature. They should share one pure function in
-  `strategies/` rather than each writing it.
+- **Evaluating filters.** Resolved in RAG-041: `matchesFilter` in `strategies/in-memory-index` is the one
+  shared pure function, and RAG-043 reuses it. The contract keeps its own matcher on purpose.
 - **Approximate indexes** return approximately the best hits. The exact-match contract would need a
   recall threshold for them. Decide when one exists.
