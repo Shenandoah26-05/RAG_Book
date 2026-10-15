@@ -95,6 +95,7 @@ export function fixtureRecords(): VectorRecord[] {
 const Q0 = unit(1, 0, 0, 0);
 const QUERIES: readonly Float32Array[] = [
   Q0,
+  // c03 and c04 tie on this query up to rounding, on purpose: the contract must not depend on it
   unit(0.2, 0.9, 0.3, 0.1),
   unit(0.5, -0.5, 0.5, -0.5),
   unit(-0.3, 0.1, -0.8, 0.5),
@@ -168,6 +169,33 @@ export function expectedHits(
 
 const idsOf = (hits: readonly ScoredId[]): string => hits.map((h) => h.id).join(",");
 
+/**
+ * Whether `hits` are what a correct store returns, allowing for rounding. Two records whose true
+ * scores differ by less than the tolerance may swap places, because different arithmetic (a
+ * database, an approximate index) rounds differently. A hit that does not belong at all, or whose
+ * score is clearly off, is still caught.
+ */
+function agrees(
+  hits: readonly ScoredId[],
+  records: readonly VectorRecord[],
+  query: Float32Array,
+  k: number,
+  filter: MetadataFilter = [],
+): boolean {
+  const want = expectedHits(records, query, k, filter);
+  if (hits.length !== want.length) return false;
+  const allowed = new Map(
+    expectedHits(records, query, records.length, filter).map((h) => [h.id, h.score]),
+  );
+  return hits.every((hit, i) => {
+    const expected = want[i];
+    if (expected === undefined) return false;
+    if (hit.id === expected.id) return true;
+    const score = allowed.get(hit.id);
+    return score !== undefined && Math.abs(score - expected.score) <= TOLERANCE;
+  });
+}
+
 /** Whether the call fails the way the port requires: a RagError coded INVALID_ARGUMENT. */
 async function rejects(run: () => Promise<unknown>): Promise<boolean> {
   try {
@@ -215,7 +243,7 @@ export async function checkVectorStore(
       if (hits.some((h, i) => i > 0 && h.score > (hits[i - 1]?.score ?? Infinity) + TOLERANCE)) {
         fail("bad-order", `${label}: scores are not descending`);
       }
-      if (idsOf(hits) !== idsOf(want)) {
+      if (!agrees(hits, records, query, k)) {
         fail("wrong-hits", `${label}: got [${idsOf(hits)}], expected [${idsOf(want)}]`);
       } else if (hits.some((h, i) => Math.abs(h.score - (want[i]?.score ?? NaN)) > TOLERANCE)) {
         fail("wrong-score", `${label}: scores differ from the cosine similarity`);
@@ -228,15 +256,21 @@ export async function checkVectorStore(
     for (const [q, query] of QUERIES.entries()) {
       const hits = await store.search(query, 50, filter);
       const want = expectedHits(records, query, 50, filter);
-      if (idsOf(hits) !== idsOf(want)) {
+      if (!agrees(hits, records, query, 50, filter)) {
         const label = `${name}, query ${q.toString()}`;
         fail("wrong-filter", `${label}: got [${idsOf(hits)}], expected [${idsOf(want)}]`);
       }
     }
   }
   // k counts hits that pass the filter: filtering after taking k would return too few
-  if (idsOf(await store.search(Q0, 2, DOC_B)) !== idsOf(expectedHits(records, Q0, 2, DOC_B))) {
+  if (!agrees(await store.search(Q0, 2, DOC_B), records, Q0, 2, DOC_B)) {
     fail("wrong-filter", "k is applied before the filter instead of after it");
+  }
+
+  // records with identical vectors tie exactly, and a tie is broken by id, ascending
+  const tied = await store.search(unit(0.5, -0.5, 0.5, -0.5), 2);
+  if (idsOf(tied) !== "c10,c11") {
+    fail("wrong-hits", `identical vectors must be ordered by id, got [${idsOf(tied)}]`);
   }
 
   // the same search twice
@@ -253,7 +287,7 @@ export async function checkVectorStore(
     fail("not-replaced", "upserting an existing id changed the count");
   }
   const toward = unit(0, 0, 0, 1);
-  if (idsOf(await store.search(toward, 3)) !== idsOf(expectedHits(afterReplace, toward, 3))) {
+  if (!agrees(await store.search(toward, 3), afterReplace, toward, 3)) {
     fail("not-replaced", "the new vector of a replaced record is not used");
   }
   const byNewDoc: MetadataFilter = [{ kind: "equals", field: "docId", value: "doc-c" }];
@@ -279,7 +313,7 @@ export async function checkVectorStore(
   if (left !== remaining.length) {
     fail("wrong-delete", `count() is ${left.toString()} after deleting one record`);
   }
-  if (idsOf(await store.search(Q0, 50)) !== idsOf(expectedHits(remaining, Q0, 50))) {
+  if (!agrees(await store.search(Q0, 50), remaining, Q0, 50)) {
     fail("wrong-delete", "a deleted record is still returned, or another one went with it");
   }
 
