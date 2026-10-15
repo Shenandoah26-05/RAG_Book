@@ -4,5 +4,6 @@ export { contentHash, makeChunkId } from "./ids.js";
 export { PAGE_SEPARATOR } from "./document.js";
 export type { CharSpan, Page, ParsedDocument, Section, TextItem } from "./document.js";
 export type { Chunk, ChunkMetadata } from "./chunk.js";
+export type { FilterClause, FilterableField, MetadataFilter } from "./filter.js";
 export type { ScoredChunk, ScoredId, VectorRecord } from "./retrieval.js";
 export type { Citation, Query } from "./chat.js";
