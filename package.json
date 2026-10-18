@@ -19,6 +19,7 @@
     "doctor": "tsx src/cli/doctor.ts",
     "show:board": "tsx scripts/show-board.ts",
     "bench:similarity": "tsx scripts/bench-similarity.ts",
+    "bench:hnsw": "tsx scripts/bench-hnsw.ts",
     "deps:check": "depcruise src --config .dependency-cruiser.mjs",
     "format": "prettier --write .",
     "prepare": "husky"
