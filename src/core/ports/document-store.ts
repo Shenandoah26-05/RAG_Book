@@ -9,6 +9,8 @@ import type { ParsedDocument } from "../types/document.js";
 export interface DocumentStore {
   /** Whether a processed document with this id is stored. */
   has(id: DocId): Promise<boolean>;
+  /** The ids of every stored document, sorted. */
+  list(): Promise<readonly DocId[]>;
   /** The stored document, or undefined if there is none. Rejects if the stored data is damaged. */
   load(id: DocId): Promise<ParsedDocument | undefined>;
   /** Stores the document, replacing any earlier one with the same id. Returns where it went. */

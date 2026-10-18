@@ -10,6 +10,16 @@ export type {
   Inspector,
 } from "./build-inspect.js";
 export { describeInspection } from "./inspect-summary.js";
+export { buildIndexer } from "./build-indexer.js";
+export type { BuildIndexerOptions, IndexRunOptions, Indexer } from "./build-indexer.js";
+export {
+  buildEmbedder,
+  DEFAULT_EMBEDDING_CACHE_DIR,
+  embedderNames,
+  parseEmbedderSpec,
+} from "./build-embedder.js";
+export type { BuildEmbedderOptions } from "./build-embedder.js";
+export { describeIndex } from "./index-summary.js";
 export { buildDoctor } from "./build-doctor.js";
 export type { BuildDoctorOptions, Doctor } from "./build-doctor.js";
 export { buildIngest, DEFAULT_PROCESSED_DIR } from "./build-ingest.js";

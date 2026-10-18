@@ -1,16 +1,17 @@
-import { mkdir, stat, writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { FileDocumentStore } from "../adapters/index.js";
 import { loadConfig } from "../config/index.js";
 import type { Env } from "../config/index.js";
 import type { Chunk, DocId } from "../core/index.js";
-import { isDocId, makeDocId, RagError, sha256OfFile } from "../shared/index.js";
+import { RagError } from "../shared/index.js";
 import { renderChunkReport, sampleChunks, seedFrom, summarizeChunks } from "../strategies/index.js";
 import type { ChunkStats } from "../strategies/index.js";
 import { buildChunkerRegistry } from "./build-chunkers.js";
 import { buildChunker } from "./chunker-registry.js";
 import { DEFAULT_PROCESSED_DIR } from "./build-ingest.js";
 import { buildTokenizer } from "./registries.js";
+import { resolveDocId } from "./resolve-doc-id.js";
 
 /** How many chunks are shown as samples unless told otherwise. */
 export const DEFAULT_SAMPLES = 3;
@@ -47,24 +48,6 @@ export interface Inspector {
    * document id, or the path of the PDF that was ingested (its id is worked out from its contents).
    */
   run(target: string, options?: InspectOptions): Promise<InspectResult>;
-}
-
-async function isFile(filePath: string): Promise<boolean> {
-  try {
-    return (await stat(filePath)).isFile();
-  } catch {
-    return false;
-  }
-}
-
-/** The document id for what the user typed: an id as it is, a PDF by the hash of its contents. */
-async function resolveDocId(target: string): Promise<DocId> {
-  if (isDocId(target)) return target;
-  if (await isFile(target)) return makeDocId(await sha256OfFile(target));
-  throw new RagError(
-    "INVALID_ARGUMENT",
-    `"${target}" is neither a document id nor an existing file`,
-  );
 }
 
 /**
