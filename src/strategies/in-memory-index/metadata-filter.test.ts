@@ -49,6 +49,37 @@ describe("matchesFilter", () => {
     expect(matchesFilter(meta(), [{ kind: "pageRange", ...range }])).toBe(expected);
   });
 
+  describe("section", () => {
+    const at = (...sectionPath: string[]): ChunkMetadata => meta({ sectionPath });
+    const under = (...path: string[]): MetadataFilter => [{ kind: "section", path }];
+
+    it("a chapter matches every chunk under it", () => {
+      expect(matchesFilter(at("Chapter 3"), under("Chapter 3"))).toBe(true);
+      expect(matchesFilter(at("Chapter 3", "3.2 Embeddings"), under("Chapter 3"))).toBe(true);
+      expect(matchesFilter(at("Chapter 4", "3.2 Embeddings"), under("Chapter 3"))).toBe(false);
+    });
+
+    it("a section matches itself and what is below it, not its siblings", () => {
+      const filter = under("Chapter 3", "3.2 Embeddings");
+      expect(matchesFilter(at("Chapter 3", "3.2 Embeddings"), filter)).toBe(true);
+      expect(matchesFilter(at("Chapter 3", "3.2 Embeddings", "Cosine"), filter)).toBe(true);
+      expect(matchesFilter(at("Chapter 3", "3.3 Search"), filter)).toBe(false);
+      expect(matchesFilter(at("Chapter 3"), filter)).toBe(false);
+    });
+
+    it("compares titles without regard to case or surrounding spaces", () => {
+      expect(matchesFilter(at(" CHAPTER 3 "), under("chapter 3"))).toBe(true);
+    });
+
+    it("does not match a title that is only part of the chunk's", () => {
+      expect(matchesFilter(at("Chapter 33"), under("Chapter 3"))).toBe(false);
+    });
+
+    it("never matches a chunk with no known section", () => {
+      expect(matchesFilter(at(), under("Chapter 3"))).toBe(false);
+    });
+  });
+
   it("needs every clause to hold", () => {
     const filter: MetadataFilter = [
       { kind: "equals", field: "docId", value: "doc-a" },
@@ -69,6 +100,19 @@ describe("assertValidFilter", () => {
       assertValidFilter([{ kind: "in", field: "docId", values: [] }]);
     }).not.toThrow();
   });
+
+  it.each([[[]], [["  "]], [["Chapter 1", ""]]])(
+    "rejects the section path %j with INVALID_ARGUMENT",
+    (path) => {
+      try {
+        assertValidFilter([{ kind: "section", path }]);
+        expect.unreachable("should have thrown");
+      } catch (error) {
+        expect(error).toBeInstanceOf(RagError);
+        expect((error as RagError).code).toBe("INVALID_ARGUMENT");
+      }
+    },
+  );
 
   it.each([{ from: 5, to: 3 }, { from: 0 }, { to: 2.5 }, { from: -1 }, { to: Number.NaN }])(
     "rejects the page range %j with INVALID_ARGUMENT",

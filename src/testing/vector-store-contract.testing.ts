@@ -29,7 +29,7 @@ export type VectorStoreViolationCode =
   | "not-deterministic" // the same search twice gave different hits
   | "dimensions-not-checked" // a vector of the wrong length was accepted
   | "not-atomic" // a batch with one invalid record was partly stored
-  | "bad-argument-accepted"; // k or a page range that must be rejected was accepted
+  | "bad-argument-accepted"; // k, a page range or a section path that must be rejected was accepted
 
 export interface VectorStoreViolation {
   readonly code: VectorStoreViolationCode;
@@ -58,11 +58,12 @@ const meta = (
   pageStart: number,
   pageEnd: number,
   strategy: string,
+  sectionPath: readonly string[] = [],
 ): ChunkMetadata => ({
   docId: docId as DocId,
   pageStart,
   pageEnd,
-  sectionPath: [],
+  sectionPath,
   charStart: pageStart * 100,
   charEnd: pageEnd * 100 + 50,
   strategy,
@@ -74,19 +75,31 @@ const record = (id: string, vector: Float32Array, metadata: ChunkMetadata): Vect
   metadata,
 });
 
+const CH1_INTRO = ["Chapter 1", "1.1 Intro"];
+const CH2_EMBEDDINGS = ["Chapter 2", "2.1 Embeddings"];
+
 /** Twelve records over two documents and two strategies. c10 and c11 share a vector (a tie). */
 export function fixtureRecords(): VectorRecord[] {
   return [
-    record("c00", unit(1, 0, 0, 0), meta("doc-a", 1, 1, "recursive")),
-    record("c01", unit(0.9, 0.1, 0, 0), meta("doc-a", 1, 2, "recursive")),
-    record("c02", unit(0.7, 0.7, 0, 0), meta("doc-a", 3, 3, "fixed-size")),
-    record("c03", unit(0, 1, 0, 0), meta("doc-a", 4, 6, "fixed-size")),
-    record("c04", unit(0, 0.8, 0.6, 0), meta("doc-a", 7, 7, "recursive")),
-    record("c05", unit(0, 0, 1, 0), meta("doc-b", 1, 1, "recursive")),
-    record("c06", unit(0, 0, 0.6, 0.8), meta("doc-b", 2, 3, "recursive")),
+    record("c00", unit(1, 0, 0, 0), meta("doc-a", 1, 1, "recursive", CH1_INTRO)),
+    record("c01", unit(0.9, 0.1, 0, 0), meta("doc-a", 1, 2, "recursive", CH1_INTRO)),
+    record(
+      "c02",
+      unit(0.7, 0.7, 0, 0),
+      meta("doc-a", 3, 3, "fixed-size", ["Chapter 1", "1.2 Scope"]),
+    ),
+    record("c03", unit(0, 1, 0, 0), meta("doc-a", 4, 6, "fixed-size", CH2_EMBEDDINGS)),
+    record("c04", unit(0, 0.8, 0.6, 0), meta("doc-a", 7, 7, "recursive", ["Chapter 2"])),
+    record("c05", unit(0, 0, 1, 0), meta("doc-b", 1, 1, "recursive", ["Chapter 1"])),
+    record("c06", unit(0, 0, 0.6, 0.8), meta("doc-b", 2, 3, "recursive", CH2_EMBEDDINGS)),
     record("c07", unit(0, 0, 0, 1), meta("doc-b", 5, 5, "fixed-size")),
     record("c08", unit(-1, 0, 0, 0), meta("doc-b", 6, 9, "fixed-size")),
-    record("c09", unit(0.3, 0.3, 0.3, 0.3), meta("doc-b", 10, 10, "recursive")),
+    // the chapter title differs in case and spaces on purpose: section titles are compared folded
+    record(
+      "c09",
+      unit(0.3, 0.3, 0.3, 0.3),
+      meta("doc-b", 10, 10, "recursive", [" CHAPTER 2 ", "2.2 Search"]),
+    ),
     record("c10", unit(0.5, -0.5, 0.5, -0.5), meta("doc-a", 8, 8, "recursive")),
     record("c11", unit(0.5, -0.5, 0.5, -0.5), meta("doc-b", 8, 8, "recursive")),
   ];
@@ -122,6 +135,31 @@ const FILTERS: readonly { readonly name: string; readonly filter: MetadataFilter
       { kind: "pageRange", from: 2, to: 8 },
     ],
   },
+  { name: "section: a chapter", filter: [{ kind: "section", path: ["Chapter 2"] }] },
+  {
+    name: "section: a section inside a chapter",
+    filter: [{ kind: "section", path: ["Chapter 2", "2.1 Embeddings"] }],
+  },
+  {
+    name: "section: titles ignore case and spaces",
+    filter: [{ kind: "section", path: ["  chapter 1 ", "1.1 INTRO"] }],
+  },
+  {
+    name: "section: a path longer than the chunk's",
+    filter: [{ kind: "section", path: ["Chapter 2", "2.1 Embeddings", "Deeper"] }],
+  },
+  {
+    name: "section: a section title alone is not a chapter",
+    filter: [{ kind: "section", path: ["1.1 Intro"] }],
+  },
+  {
+    name: "section with docId and pageRange",
+    filter: [
+      { kind: "section", path: ["Chapter 2"] },
+      { kind: "equals", field: "docId", value: "doc-b" },
+      { kind: "pageRange", from: 3 },
+    ],
+  },
   { name: "nothing matches", filter: [{ kind: "equals", field: "docId", value: "doc-z" }] },
   { name: "empty filter", filter: [] },
 ];
@@ -140,6 +178,11 @@ function matches(m: ChunkMetadata, filter: MetadataFilter): boolean {
         return m[clause.field] === clause.value;
       case "in":
         return clause.values.includes(m[clause.field]);
+      case "section":
+        return clause.path.every((title, i) => {
+          const have = m.sectionPath[i];
+          return have !== undefined && have.trim().toLowerCase() === title.trim().toLowerCase();
+        });
       case "pageRange":
         return (
           (clause.from === undefined || m.pageEnd >= clause.from) &&
@@ -339,6 +382,12 @@ export async function checkVectorStore(
   for (const range of [{ from: 5, to: 3 }, { from: 0 }, { to: 2.5 }]) {
     if (!(await rejects(() => store.search(Q0, 3, [{ kind: "pageRange", ...range }])))) {
       fail("bad-argument-accepted", `page range ${JSON.stringify(range)} was accepted`);
+    }
+  }
+
+  for (const path of [[], [" "], ["Chapter 1", ""]]) {
+    if (!(await rejects(() => store.search(Q0, 3, [{ kind: "section", path }])))) {
+      fail("bad-argument-accepted", `section path ${JSON.stringify(path)} was accepted`);
     }
   }
 

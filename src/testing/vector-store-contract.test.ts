@@ -66,6 +66,12 @@ class ReferenceStore implements VectorStore {
     if (this.faults.acceptAnyArgument !== true) {
       if (!Number.isInteger(k) || k < 1) return Promise.reject(invalid(`bad k ${String(k)}`));
       for (const clause of filter ?? []) {
+        if (clause.kind === "section") {
+          if (clause.path.length === 0 || clause.path.some((title) => title.trim() === "")) {
+            return Promise.reject(invalid("bad section path"));
+          }
+          continue;
+        }
         if (clause.kind !== "pageRange") continue;
         const { from, to } = clause;
         const whole = (n: number | undefined): boolean =>
