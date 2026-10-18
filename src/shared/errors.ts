@@ -3,7 +3,12 @@
  * so a code must never change meaning. Add new codes here as tickets need them.
  */
 export type RagErrorCode =
-  "CONFIG_INVALID" | "INGESTION_FAILED" | "INVALID_ARGUMENT" | "PROVIDER_UNAVAILABLE" | "INTERNAL";
+  | "CONFIG_INVALID"
+  | "INGESTION_FAILED"
+  | "INDEX_CORRUPT"
+  | "INVALID_ARGUMENT"
+  | "PROVIDER_UNAVAILABLE"
+  | "INTERNAL";
 
 export interface RagErrorOptions {
   /** The lower-level error that caused this one (a failed fetch, a parse error, ...). */
