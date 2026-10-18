@@ -5,3 +5,4 @@ export * from "./llm/index.js";
 export * from "./ollama/index.js";
 export * from "./tokenizers/index.js";
 export * from "./vector-stores/index.js";
+export * from "./index-writers/index.js";
