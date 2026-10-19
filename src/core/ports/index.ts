@@ -2,6 +2,7 @@
 export type { Chunker } from "./chunker.js";
 export type { ChunkStore } from "./chunk-store.js";
 export type { Cleaner } from "./cleaner.js";
+export type { Diversifier } from "./diversifier.js";
 export type { DocumentLoader } from "./document-loader.js";
 export type { DocumentStore } from "./document-store.js";
 export type { EmbedKind, Embedder } from "./embedder.js";
