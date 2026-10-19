@@ -12,6 +12,7 @@ import type {
 } from "../core/index.js";
 import { RagError } from "../shared/index.js";
 import { LlmReranker, NoopReranker, RerankingRetriever } from "../strategies/index.js";
+import { NoopReranker, RerankingRetriever, ScoringReranker } from "../strategies/index.js";
 import { makeCandidates } from "../testing/reranker-contract.testing.js";
 import {
   buildReranker,
@@ -35,6 +36,14 @@ class Recording implements Retriever {
 describe("buildReranker", () => {
   it("knows the noop reranker by its config name", () => {
     expect(rerankerNames()).toEqual(["noop", "llm"]);
+  it("knows the noop and cross-encoder rerankers by their config names", () => {
+    expect(rerankerNames()).toEqual(["noop", "cross-encoder"]);
+  });
+
+  it("builds the cross-encoder reranker without loading its model", () => {
+    const reranker = buildReranker({ ...on, strategy: "cross-encoder" });
+    expect(reranker).toBeInstanceOf(ScoringReranker);
+    expect(reranker.name).toBe("cross-encoder");
   });
 
   it("is the no-op reranker for the default configuration, where reranking is off", () => {

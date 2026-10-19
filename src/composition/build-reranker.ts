@@ -12,6 +12,11 @@ import {
   RerankingRetriever,
 } from "../strategies/index.js";
 import { buildLlmProvider } from "./build-llm-provider.js";
+import { CrossEncoderScorer } from "../adapters/index.js";
+import type { RagConfig } from "../config/index.js";
+import type { Reranker, Retriever } from "../core/index.js";
+import { RagError } from "../shared/index.js";
+import { NoopReranker, RerankingRetriever, ScoringReranker } from "../strategies/index.js";
 
 type Settings = RagConfig["rerank"];
 
@@ -76,6 +81,12 @@ const RERANKERS: ReadonlyMap<string, (settings: Settings, context: RerankContext
         }),
     ],
   ]);
+// here (RAG-061 adds "llm", RAG-062 adds "cross-encoder").
+const RERANKERS: ReadonlyMap<string, () => Reranker> = new Map<string, () => Reranker>([
+  ["noop", () => new NoopReranker()],
+  // the model is not loaded here, only on the first rerank
+  ["cross-encoder", () => new ScoringReranker({ scorer: new CrossEncoderScorer() })],
+]);
 
 /** The names accepted in `rerank.strategy` (when `rerank.enabled` is true). */
 export const rerankerNames = (): readonly string[] => [...RERANKERS.keys()];

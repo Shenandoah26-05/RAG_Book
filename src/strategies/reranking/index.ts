@@ -4,3 +4,5 @@ export type { LlmRerankerOptions } from "./llm-reranker.js";
 export { assertRerankArguments, NoopReranker } from "./noop-reranker.js";
 export { fillRerankPrompt, parseRerankPrompt } from "./rerank-prompt.js";
 export { parseScoreReply } from "./score-reply.js";
+export { ScoringReranker } from "./scoring-reranker.js";
+export type { ScoringRerankerDeps } from "./scoring-reranker.js";
