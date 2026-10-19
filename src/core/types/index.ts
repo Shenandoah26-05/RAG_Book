@@ -9,3 +9,4 @@ export type { RetrievedChunk, ScoredChunk, ScoredId, VectorRecord } from "./retr
 export type { Citation, Query } from "./chat.js";
 export { INDEX_MANIFEST_VERSION } from "./index-manifest.js";
 export type { IndexManifest } from "./index-manifest.js";
+export type { AssembledPrompt, DropReason, DroppedChunk, PromptTemplate } from "./prompt.js";
