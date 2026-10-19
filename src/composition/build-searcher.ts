@@ -72,6 +72,13 @@ export interface SearchReport {
   readonly retrievers: readonly RetrieverTrace[];
   /** The name of the retriever that gave `results`, e.g. "hybrid+parents". */
   readonly retriever: string;
+  /**
+   * What the reranker was given, in the retriever's own order: the fused (and parent-expanded) list,
+   * `rerank.candidates` long when reranking is on. With reranking off it is the same list as
+   * `results`, because the no-op reranker changes nothing. Comparing it with `results` shows what
+   * reranking did.
+   */
+  readonly candidates: readonly RetrievedChunk[];
   /** What the pipeline would use: fused, expanded to parents and reranked as configured. */
   readonly results: readonly RetrievedChunk[];
   /** Milliseconds for the whole search, not counting the index load. */
@@ -150,7 +157,13 @@ export async function buildSearcher(options: BuildSearcherOptions = {}): Promise
             found.push({ name, results });
           }),
       });
-      const retriever = buildRerankingRetriever(base, config.rerank, {
+      // Watches what the reranker is given. Its trace is thrown away: the stages shown in the report
+      // are the base retrievers', and this one is not a retriever of its own.
+      let candidates: readonly RetrievedChunk[] = [];
+      const reranked = new ObservedRetriever(base, new Trace(), (_name, results) => {
+        candidates = results;
+      });
+      const retriever = buildRerankingRetriever(reranked, config.rerank, {
         generation: config.generation,
         env,
         logger,
@@ -193,6 +206,7 @@ export async function buildSearcher(options: BuildSearcherOptions = {}): Promise
           };
         }),
         retriever: retriever.name,
+        candidates,
         results,
         totalMs: Math.round(totalMs),
         stages,

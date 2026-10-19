@@ -76,10 +76,12 @@ time, so their stages overlap in the trace, which the report shows (`startMs`).
 `SearchReport` (also the `--json` output): `question`, `k`, `filter`, `settings` (strategy, fusion,
 rerank), `index` (namespace, location, embedder, chunker, counts, git commit, build time, `loadMs`),
 `retrievers` (each: `name`, `startMs`, `durationMs`, `results` as ranked chunks with scores),
-`retriever` and `results` (the final list), `totalMs`, and `stages` (the raw trace).
+`retriever`, `candidates` (what the reranker was given, RAG-063) and `results` (the final list),
+`totalMs`, and `stages` (the raw trace).
 
 The text form prints the same: one ranked list per retriever (rank, score, page, section, the start
-of the text), then the final list, then a time line.
+of the text), then the final list, then a time line. With reranking on, the final list is preceded by
+the candidates in the retriever's order, so both orders are on the page.
 
 ## 5. Not in this ticket
 

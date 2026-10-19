@@ -67,12 +67,24 @@ export function describeSearch(report: SearchReport): string {
     );
   }
 
-  const same = report.retrievers.length === 1 && report.retrievers[0]?.name === report.retriever;
-  lines.push(
-    "",
-    `${same ? "Result" : "Final"} (${report.retriever}): ${report.results.length.toString()} chunks`,
-    ...ranked(report.results),
-  );
+  if (settings.rerank.enabled) {
+    // both orders, so what reranking did is visible: the retriever's, then the reranker's
+    lines.push(
+      "",
+      `Candidates (${report.retriever}), before reranking: ${report.candidates.length.toString()} chunks`,
+      ...ranked(report.candidates),
+      "",
+      `Reranked (${report.retriever}, ${settings.rerank.strategy}): ${report.results.length.toString()} chunks`,
+      ...ranked(report.results),
+    );
+  } else {
+    const same = report.retrievers.length === 1 && report.retrievers[0]?.name === report.retriever;
+    lines.push(
+      "",
+      `${same ? "Result" : "Final"} (${report.retriever}): ${report.results.length.toString()} chunks`,
+      ...ranked(report.results),
+    );
+  }
 
   const times = report.retrievers.map((r) => `${r.name} ${r.durationMs.toString()} ms`);
   lines.push(
