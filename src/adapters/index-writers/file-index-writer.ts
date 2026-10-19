@@ -1,7 +1,5 @@
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { z } from "zod";
-import { INDEX_MANIFEST_VERSION } from "../../core/index.js";
 import type { IndexContents, IndexManifest, IndexWriter } from "../../core/index.js";
 import { RagError } from "../../shared/index.js";
 
@@ -38,6 +36,14 @@ const manifestSchema = z.strictObject({
   counts: z.strictObject({ documents: count, chunks: count, parents: count, vectors: count }),
   timingsMs: z.record(z.string(), z.number()),
 });
+import {
+  CHUNKS_FILE,
+  KEYWORD_FILE,
+  MANIFEST_FILE,
+  manifestSchema,
+  namespaceFolder,
+  VECTORS_FILE,
+} from "./index-format.js";
 
 /**
  * Saves an index as a folder, `<root>/<namespace>/`:
@@ -61,10 +67,7 @@ export class FileIndexWriter implements IndexWriter {
   }
 
   locationOf(namespace: string): string {
-    if (!NAMESPACE.test(namespace) || namespace.includes("..")) {
-      throw new RagError("INVALID_ARGUMENT", `Not an index namespace: "${namespace}"`);
-    }
-    return path.join(this.#root, namespace);
+    return namespaceFolder(this.#root, namespace);
   }
 
   async readManifest(namespace: string): Promise<IndexManifest | undefined> {

@@ -35,6 +35,7 @@ pnpm test
 | `pnpm export:markdown <pdf>`    | Load, clean and find sections; print an outline, write Markdown |
 | `pnpm run doctor`               | Check that Ollama is running and has the models                 |
 | `pnpm deps:check`               | Check the layer rules in `docs/architecture.md`                 |
+| `pnpm eval:validate <pdf>`      | Check the evaluation dataset against the ingested book          |
 
 ## Ingesting a book
 
