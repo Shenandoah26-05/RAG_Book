@@ -9,6 +9,7 @@ export type { EmbedKind, Embedder } from "./embedder.js";
 export type { FusionStrategy, RankedList } from "./fusion.js";
 export type { IndexContents, IndexWriter } from "./index-writer.js";
 export type { KeywordIndex } from "./keyword-index.js";
+export type { LlmProvider } from "./llm-provider.js";
 export type { ModelHost } from "./model-host.js";
 export type { RetrieveOptions, Retriever } from "./retriever.js";
 export type { SectionDetector } from "./section-detector.js";
