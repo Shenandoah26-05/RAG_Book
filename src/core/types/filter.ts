@@ -12,7 +12,14 @@ export type FilterClause =
    * missing end is open). A chunk on pages 4 to 6 matches `{ from: 6 }` and `{ to: 4 }`, but not
    * `{ from: 7 }`. Pages are whole numbers of 1 or more and `from` must not exceed `to`.
    */
-  | { readonly kind: "pageRange"; readonly from?: number; readonly to?: number };
+  | { readonly kind: "pageRange"; readonly from?: number; readonly to?: number }
+  /**
+   * The chunk lies under this chapter or section: its `sectionPath` starts with `path`. A path of
+   * one title is a chapter, a longer one a section inside it. Titles are compared without regard
+   * to case or surrounding spaces. A chunk with no known section never matches. `path` must hold
+   * at least one title and no blank ones.
+   */
+  | { readonly kind: "section"; readonly path: readonly string[] };
 
 /**
  * Which chunks a search may return: the chunks that satisfy **every** clause. An empty list allows
