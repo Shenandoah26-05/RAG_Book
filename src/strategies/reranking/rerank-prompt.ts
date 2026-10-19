@@ -25,8 +25,10 @@ export function parseRerankPrompt(fileName: string, text: string): PromptTemplat
       `Prompt file "${fileName}" must be named <id>.v<N>.txt, e.g. rerank-relevance.v1.txt`,
     );
   }
+  // a prompt reads the same on every system: a checkout with Windows line endings changes nothing
+  const normalised = text.replaceAll("\r\n", "\n");
   for (const placeholder of [QUESTION_PLACEHOLDER, PASSAGE_PLACEHOLDER]) {
-    const found = countOf(text, placeholder);
+    const found = countOf(normalised, placeholder);
     if (found !== 1) {
       throw new RagError(
         "INVALID_ARGUMENT",
@@ -34,7 +36,11 @@ export function parseRerankPrompt(fileName: string, text: string): PromptTemplat
       );
     }
   }
-  return { id: match.groups.id as string, version: match.groups.version as string, text };
+  return {
+    id: match.groups.id as string,
+    version: match.groups.version as string,
+    text: normalised,
+  };
 }
 
 /**

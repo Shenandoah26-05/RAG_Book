@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { RetrievedChunk } from "../core/index.js";
-import { dogs, furry, purr, young } from "../testing/search-fixture.testing.js";
+import { dogs, furry, purr, young } from "./search-fixture.testing.js";
 import type { SearchReport } from "./build-searcher.js";
 import { describeFilter, describeSearch, searchToJson } from "./search-summary.js";
 

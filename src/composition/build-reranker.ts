@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { CrossEncoderScorer } from "../adapters/index.js";
 import type { RagConfig } from "../config/index.js";
 import type { LlmProvider, Reranker, Retriever } from "../core/index.js";
 import { noopLogger, RagError } from "../shared/index.js";
@@ -10,13 +11,9 @@ import {
   NoopReranker,
   parseRerankPrompt,
   RerankingRetriever,
+  ScoringReranker,
 } from "../strategies/index.js";
 import { buildLlmProvider } from "./build-llm-provider.js";
-import { CrossEncoderScorer } from "../adapters/index.js";
-import type { RagConfig } from "../config/index.js";
-import type { Reranker, Retriever } from "../core/index.js";
-import { RagError } from "../shared/index.js";
-import { NoopReranker, RerankingRetriever, ScoringReranker } from "../strategies/index.js";
 
 type Settings = RagConfig["rerank"];
 
@@ -66,7 +63,7 @@ function loadRerankPrompt(promptsDir: string) {
 
 // The one place that reads `rerank.enabled`. Everything else works with a `Reranker` or a
 // `Retriever` and cannot tell whether reranking is on. Adding a reranker is one class and one line
-// here (RAG-062 adds "cross-encoder").
+// here.
 const RERANKERS: ReadonlyMap<string, (settings: Settings, context: RerankContext) => Reranker> =
   new Map<string, (settings: Settings, context: RerankContext) => Reranker>([
     ["noop", () => new NoopReranker()],
@@ -80,13 +77,9 @@ const RERANKERS: ReadonlyMap<string, (settings: Settings, context: RerankContext
           logger: context.logger ?? noopLogger,
         }),
     ],
+    // the model is not loaded here, only on the first rerank
+    ["cross-encoder", () => new ScoringReranker({ scorer: new CrossEncoderScorer() })],
   ]);
-// here (RAG-061 adds "llm", RAG-062 adds "cross-encoder").
-const RERANKERS: ReadonlyMap<string, () => Reranker> = new Map<string, () => Reranker>([
-  ["noop", () => new NoopReranker()],
-  // the model is not loaded here, only on the first rerank
-  ["cross-encoder", () => new ScoringReranker({ scorer: new CrossEncoderScorer() })],
-]);
 
 /** The names accepted in `rerank.strategy` (when `rerank.enabled` is true). */
 export const rerankerNames = (): readonly string[] => [...RERANKERS.keys()];

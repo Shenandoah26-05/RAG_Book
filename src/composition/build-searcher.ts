@@ -7,8 +7,9 @@ import { createConsoleLogger, RagError, Trace } from "../shared/index.js";
 import type { Logger, StageRecord } from "../shared/index.js";
 import { ObservedRetriever } from "../strategies/index.js";
 import { buildEmbedder, DEFAULT_EMBEDDING_CACHE_DIR } from "./build-embedder.js";
+import { buildRerankingRetriever } from "./build-reranker.js";
 import { buildRetriever, usesEmbedder } from "./build-retriever.js";
-import { loadIndex } from "./load-index.js";
+import { openIndex } from "./load-index.js";
 import { DEFAULT_VARIANTS_DIR, resolveVariant } from "./variants.js";
 
 export interface BuildSearcherOptions {
@@ -121,7 +122,12 @@ export async function buildSearcher(options: BuildSearcherOptions = {}): Promise
       const embedderSpec =
         searchOptions.embedder ?? `${config.embedding.provider}:${config.embedding.model}`;
 
-      const index = await loadIndex(reader, indexNamespace(chunker, embedderSpec), logger);
+      const index = await openIndex(
+        reader,
+        indexNamespace(chunker, embedderSpec),
+        config.vectorStore,
+        logger,
+      );
 
       const embedder = usesEmbedder(config.retrieval.strategy)
         ? buildEmbedder(index.manifest.embedder.modelId, {
@@ -136,15 +142,19 @@ export async function buildSearcher(options: BuildSearcherOptions = {}): Promise
       const started = performance.now();
       const trace = new Trace();
       const found: { name: string; results: readonly RetrievedChunk[] }[] = [];
-      const retriever = buildRetriever({
-        retrieval: config.retrieval,
-        rerank: config.rerank,
+      const base = buildRetriever(config.retrieval, {
         index,
         ...(embedder === undefined ? {} : { embedder }),
         wrap: (inner) =>
           new ObservedRetriever(inner, trace, (name, results) => {
             found.push({ name, results });
           }),
+      });
+      const retriever = buildRerankingRetriever(base, config.rerank, {
+        generation: config.generation,
+        env,
+        logger,
+        ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
       });
 
       const results = await retriever.retrieve({ text: question }, { k, filter });

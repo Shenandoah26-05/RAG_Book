@@ -196,6 +196,12 @@ describe("buildPipeline", () => {
     expect(stages["rerank"]).toMatchObject({ reranker: "noop", candidates: 4, kept: 1 });
   });
 
+  it("builds the llm reranker from the generation model when rerank.strategy is llm", async () => {
+    // the default strategy is "llm": turning reranking on must be enough, with no extra setup
+    const pipeline = await buildPipeline(await setup(contents(), ["--rerank.enabled=true"]));
+    expect(pipeline.describe()).toMatchObject({ reranker: "llm", llm: "fake:llm" });
+  });
+
   it("fetches only k when reranking is off", async () => {
     const answer = await (await buildPipeline(await setup(contents()))).ask(QUESTION, { k: 2 });
     const retrieve = answer.trace.stages.find((s) => s.stage === "retrieve");
@@ -213,12 +219,12 @@ describe("buildPipeline: problems are reported where they can be fixed", () => {
   });
 
   it.each([
-    ["--retrieval.strategy=nope", "Unknown retriever", "dense"],
-    ["--retrieval.fusion=nope", "Unknown fusion", "rrf"],
-    ["--rerank.enabled=true", "Unknown reranker", "noop"],
-    ["--generation.ordering=nope", "Unknown ordering", "sandwich"],
-  ])("rejects %s as CONFIG_INVALID and lists what exists", async (flag, message, known) => {
-    const options = await setup(contents(), [flag]);
+    [["--retrieval.strategy=nope"], "Unknown retriever", "dense"],
+    [["--retrieval.fusion=nope"], "Unknown fusion", "rrf"],
+    [["--rerank.enabled=true", "--rerank.strategy=nope"], "Unknown reranker", "cross-encoder"],
+    [["--generation.ordering=nope"], "Unknown ordering", "sandwich"],
+  ])("rejects %j as CONFIG_INVALID and lists what exists", async (flags, message, known) => {
+    const options = await setup(contents(), flags);
     const error = await buildPipeline(options).catch((e: unknown) => e);
     expect(error).toMatchObject({ code: "CONFIG_INVALID" });
     expect((error as Error).message).toContain(message);

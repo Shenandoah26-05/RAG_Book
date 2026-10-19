@@ -2,40 +2,6 @@ import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { IndexContents, IndexManifest, IndexWriter } from "../../core/index.js";
 import { RagError } from "../../shared/index.js";
-
-export const MANIFEST_FILE = "manifest.json";
-export const CHUNKS_FILE = "chunks.jsonl";
-export const VECTORS_FILE = "vectors.bin";
-const KEYWORD_FILE = "keyword.json";
-
-/** A namespace becomes a folder name: letters, digits, `.`, `_` and `-`, never starting with a dot. */
-const NAMESPACE = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
-
-const count = z.number().int().nonnegative();
-
-/** The shape of `manifest.json`. Unknown keys are rejected, so a manifest of another version fails loudly. */
-const manifestSchema = z.strictObject({
-  version: z.literal(INDEX_MANIFEST_VERSION),
-  namespace: z.string(),
-  createdAt: z.string(),
-  gitCommit: z.string().nullable(),
-  configHash: z.string(),
-  fingerprint: z.string(),
-  chunker: z.strictObject({
-    name: z.string(),
-    tokenizer: z.string(),
-    maxTokens: count,
-    overlapTokens: count,
-  }),
-  embedder: z.strictObject({
-    modelId: z.string(),
-    dimensions: count,
-    batchSize: count,
-  }),
-  documents: z.array(z.string()),
-  counts: z.strictObject({ documents: count, chunks: count, parents: count, vectors: count }),
-  timingsMs: z.record(z.string(), z.number()),
-});
 import {
   CHUNKS_FILE,
   KEYWORD_FILE,
