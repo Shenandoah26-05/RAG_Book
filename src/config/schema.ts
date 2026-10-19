@@ -61,6 +61,11 @@ export const ragConfigSchema = z
     generation: z.strictObject({
       provider: name,
       model: text,
+      temperature: z
+        .number("must be a number")
+        .min(0, "must be 0 or greater")
+        .max(2, "must be 2 or less"),
+      maxOutputTokens: positiveInt,
       contextBudgetTokens: positiveInt,
       ordering: name,
     }),

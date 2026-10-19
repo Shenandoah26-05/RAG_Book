@@ -20,6 +20,8 @@ export const DEFAULT_CONFIG: RagConfig = {
   generation: {
     provider: "ollama",
     model: "llama3.2",
+    temperature: 0.2,
+    maxOutputTokens: 1024,
     contextBudgetTokens: 3000,
     ordering: "sandwich",
   },

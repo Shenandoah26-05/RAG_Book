@@ -33,3 +33,5 @@ export {
   tokenizerNames,
 } from "./registries.js";
 export { buildVectorStore, SQLITE_INDEX_FILE, vectorStoreNames } from "./build-vector-store.js";
+export { buildLlmProvider, llmProviderNames } from "./build-llm-provider.js";
+export type { BuildLlmProviderOptions } from "./build-llm-provider.js";
