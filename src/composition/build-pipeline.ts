@@ -4,7 +4,7 @@ import { FileIndexReader } from "../adapters/index.js";
 import { loadConfig } from "../config/index.js";
 import type { Env } from "../config/index.js";
 import type { Embedder, LlmProvider, PromptTemplate } from "../core/index.js";
-import { indexNamespace, RagPipeline } from "../pipeline/index.js";
+import { GroundedPipeline, indexNamespace, RagPipeline } from "../pipeline/index.js";
 import { createConsoleLogger, RagError } from "../shared/index.js";
 import type { Logger } from "../shared/index.js";
 import {
@@ -24,7 +24,7 @@ import { loadIndex } from "./load-index.js";
 import { buildTokenizer } from "./registries.js";
 
 /** The prompt the pipeline answers with. A new wording is a new file and a change here. */
-export const PROMPT_FILE = "rag-system.v1.txt";
+export const PROMPT_FILE = "rag-system.v2.txt";
 /** Where prompt files are read from unless told otherwise. */
 export const DEFAULT_PROMPTS_DIR = "prompts";
 
@@ -73,7 +73,7 @@ async function readPrompt(dir: string): Promise<PromptTemplate> {
  * @throws ConfigError for a bad config; CONFIG_INVALID for an unknown name or an unreadable prompt;
  *   INVALID_ARGUMENT if there is no index yet; INDEX_CORRUPT if the saved index is damaged
  */
-export async function buildPipeline(options: BuildPipelineOptions = {}): Promise<RagPipeline> {
+export async function buildPipeline(options: BuildPipelineOptions = {}): Promise<GroundedPipeline> {
   const {
     argv = process.argv.slice(2),
     env = process.env,
@@ -134,6 +134,14 @@ export async function buildPipeline(options: BuildPipelineOptions = {}): Promise
     ordering,
   });
 
+  const llm =
+    options.llm ??
+    buildLlmProvider(config.generation, {
+      env,
+      ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
+    });
+
+  const pipeline = new RagPipeline({
   return new RagPipeline({
     transformer: new IdentityQueryTransformer(),
     retriever,
@@ -143,4 +151,6 @@ export async function buildPipeline(options: BuildPipelineOptions = {}): Promise
     llm,
     k: config.retrieval.k,
   });
+  // the guardrails wrap the finished pipeline; the pipeline itself knows nothing about them
+  return new GroundedPipeline({ inner: pipeline, minScore: config.grounding.minScore });
 }

@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { FileIndexWriter } from "../adapters/index.js";
 import { INDEX_MANIFEST_VERSION, makeChunkId } from "../core/index.js";
 import type { Chunk, Embedder, IndexContents, LlmProvider } from "../core/index.js";
-import { indexNamespace, readAnswer } from "../pipeline/index.js";
+import { indexNamespace, NOT_FOUND_MESSAGE, readAnswer } from "../pipeline/index.js";
 import { makeDocId } from "../shared/index.js";
 import { Bm25Index } from "../strategies/index.js";
 import { buildPipeline, PROMPT_FILE } from "./build-pipeline.js";
@@ -150,15 +150,36 @@ describe("buildPipeline", () => {
       "Cats sleep for most of the day.",
     ]);
     expect(answer.prompt.system).toContain("Cats purr when they are content.");
-    expect(answer.prompt.promptVersion).toBe("rag-system@v1");
+    expect(answer.prompt.promptVersion).toBe("rag-system@v2");
     expect(answer.citations).toHaveLength(2);
     expect(answer.trace.snapshot().stages.map((s) => s.stage)).toEqual([
       "transform",
       "retrieve",
       "rerank",
       "assemble",
+      "ground",
       "generate",
+      "check-citations",
     ]);
+  });
+
+  it("checks the citations of the reply it streams", async () => {
+    const pipeline = await buildPipeline(await setup(contents()));
+    const answer = await pipeline.ask(QUESTION, { k: 2 });
+    await readAnswer(answer);
+    expect(await answer.grounding).toMatchObject({
+      answered: true,
+      cited: [1],
+      unknownCitations: [],
+    });
+  });
+
+  it("answers 'not found' without calling the model when grounding.min-score is not reached", async () => {
+    const pipeline = await buildPipeline(await setup(contents(), ["--grounding.min-score=5"]));
+    const answer = await pipeline.ask(QUESTION, { k: 2 });
+    expect(await readAnswer(answer)).toBe(NOT_FOUND_MESSAGE);
+    expect(await answer.grounding).toMatchObject({ answered: false, refusal: "low-score" });
+    expect(answer.trace.stages.map((s) => s.stage)).not.toContain("generate");
   });
 
   it("uses retrieval.strategy from the configuration", async () => {
@@ -271,6 +292,15 @@ describe("RagPipeline construction", () => {
     const texts = await Promise.all(files.map((file) => readFile(file, "utf8")));
     const builders = files
       .filter((_, i) => /new RagPipeline\(/.test(texts[i] ?? ""))
+      .map((file) => path.relative(srcDir, file).split(path.sep).join("/"));
+    expect(builders).toEqual(["composition/build-pipeline.ts"]);
+  });
+
+  it("is the same for the guardrails: GroundedPipeline is built only there too", async () => {
+    const files = await sourceFiles(srcDir);
+    const texts = await Promise.all(files.map((file) => readFile(file, "utf8")));
+    const builders = files
+      .filter((_, i) => /new GroundedPipeline\(/.test(texts[i] ?? ""))
       .map((file) => path.relative(srcDir, file).split(path.sep).join("/"));
     expect(builders).toEqual(["composition/build-pipeline.ts"]);
   });

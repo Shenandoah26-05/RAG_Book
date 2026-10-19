@@ -25,4 +25,7 @@ export const DEFAULT_CONFIG: RagConfig = {
     contextBudgetTokens: 3000,
     ordering: "sandwich",
   },
+  // 0: do not refuse on score. A good value depends on the scale of the retriever (cosine,
+  // fused RRF scores) or reranker in use, so it is set per setup, not guessed here.
+  grounding: { minScore: 0 },
 };
