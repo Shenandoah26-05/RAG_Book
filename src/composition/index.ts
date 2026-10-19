@@ -40,3 +40,5 @@ export {
   resolveRerank,
 } from "./build-reranker.js";
 export type { RerankPlan } from "./build-reranker.js";
+export { buildLlmProvider, llmProviderNames } from "./build-llm-provider.js";
+export type { BuildLlmProviderOptions } from "./build-llm-provider.js";
