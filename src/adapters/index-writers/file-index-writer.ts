@@ -5,9 +5,9 @@ import { INDEX_MANIFEST_VERSION } from "../../core/index.js";
 import type { IndexContents, IndexManifest, IndexWriter } from "../../core/index.js";
 import { RagError } from "../../shared/index.js";
 
-const MANIFEST_FILE = "manifest.json";
-const CHUNKS_FILE = "chunks.jsonl";
-const VECTORS_FILE = "vectors.bin";
+export const MANIFEST_FILE = "manifest.json";
+export const CHUNKS_FILE = "chunks.jsonl";
+export const VECTORS_FILE = "vectors.bin";
 const KEYWORD_FILE = "keyword.json";
 
 /** A namespace becomes a folder name: letters, digits, `.`, `_` and `-`, never starting with a dot. */
