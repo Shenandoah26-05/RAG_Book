@@ -1,10 +1,10 @@
 import type {
   ChunkId,
   ChunkMetadata,
+  ExportableVectorStore,
   MetadataFilter,
   ScoredId,
   VectorRecord,
-  VectorStore,
 } from "../../core/index.js";
 import { RagError } from "../../shared/index.js";
 import { dot, norm } from "../ranking/index.js";
@@ -30,9 +30,10 @@ const invalid = (message: string): RagError => new RagError("INVALID_ARGUMENT", 
  * - The best `k` are kept with a bounded heap (`TopK`) instead of sorting all the scores.
  * - `upsert` checks the whole batch before storing anything, and stores a copy of each vector, so
  *   neither a bad batch nor a caller who later changes its array can damage the index.
- * - It lives in memory only. Saving it to disk is RAG-042.
+ * - It lives in memory only. `records()` lets an adapter save it to disk (RAG-042) without this
+ *   class knowing anything about files.
  */
-export class FlatVectorStore implements VectorStore {
+export class FlatVectorStore implements ExportableVectorStore {
   readonly dimensions: number;
   readonly #entries = new Map<ChunkId, Entry>();
 
@@ -88,6 +89,13 @@ export class FlatVectorStore implements VectorStore {
 
   count(): Promise<number> {
     return Promise.resolve(this.#entries.size);
+  }
+
+  /** Insertion order: a replaced id keeps its original place. */
+  *records(): Iterable<VectorRecord> {
+    for (const [id, entry] of this.#entries) {
+      yield { id, vector: entry.vector, metadata: entry.metadata };
+    }
   }
 
   #assertUsable(vector: Float32Array, what: string): void {

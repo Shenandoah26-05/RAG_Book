@@ -9,4 +9,4 @@ export type { IndexContents, IndexWriter } from "./index-writer.js";
 export type { ModelHost } from "./model-host.js";
 export type { SectionDetector } from "./section-detector.js";
 export type { Tokenizer } from "./tokenizer.js";
-export type { VectorStore } from "./vector-store.js";
+export type { ExportableVectorStore, VectorStore } from "./vector-store.js";

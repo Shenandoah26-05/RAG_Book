@@ -31,3 +31,13 @@ export interface VectorStore {
   /** How many records are stored. */
   count(): Promise<number>;
 }
+
+/**
+ * A `VectorStore` that can also hand back everything it holds, which is what saving it to disk needs
+ * (RAG-042). Kept apart from `VectorStore` so a store that cannot list its contents (a remote
+ * database) is still a valid store; it just cannot be saved this way.
+ */
+export interface ExportableVectorStore extends VectorStore {
+  /** Every stored record, in a stable order. The vectors are the store's own: do not write into them. */
+  records(): Iterable<VectorRecord>;
+}

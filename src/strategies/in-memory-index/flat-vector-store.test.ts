@@ -112,3 +112,21 @@ describe("FlatVectorStore: constructor", () => {
     expect(() => new FlatVectorStore(dimensions)).toThrow(/dimensions must be a whole number/);
   });
 });
+
+describe("FlatVectorStore: records()", () => {
+  it("lists every record in insertion order; a replaced id keeps its place", async () => {
+    const store = new FlatVectorStore(2);
+    await store.upsert([record("b", 1, 0), record("a", 0, 1), record("c", 1, 1)]);
+    await store.upsert([record("b", 5, 5)]);
+    await store.delete(["c" as ChunkId]);
+
+    const listed = [...store.records()];
+    expect(listed.map((r) => r.id)).toEqual(["b", "a"]);
+    expect(Array.from(listed[0]?.vector ?? [])).toEqual([5, 5]);
+    expect(listed[1]?.metadata).toEqual(meta);
+  });
+
+  it("lists nothing for an empty store", () => {
+    expect([...new FlatVectorStore(2).records()]).toEqual([]);
+  });
+});
