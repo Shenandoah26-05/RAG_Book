@@ -42,3 +42,22 @@ export {
 export type { RerankPlan } from "./build-reranker.js";
 export { buildLlmProvider, llmProviderNames } from "./build-llm-provider.js";
 export type { BuildLlmProviderOptions } from "./build-llm-provider.js";
+export { buildSearcher } from "./build-searcher.js";
+export type {
+  BuildSearcherOptions,
+  RetrieverTrace,
+  SearchOptions,
+  SearchReport,
+  Searcher,
+} from "./build-searcher.js";
+export { describeFilter, describeSearch, searchToJson } from "./search-summary.js";
+export {
+  buildRetriever,
+  fusionNames,
+  retrievalStrategyNames,
+  usesEmbedder,
+} from "./build-retriever.js";
+export type { BuildRetrieverOptions } from "./build-retriever.js";
+export { loadIndex } from "./load-index.js";
+export type { LoadedIndex } from "./load-index.js";
+export { DEFAULT_VARIANTS_DIR, listVariants, resolveVariant } from "./variants.js";

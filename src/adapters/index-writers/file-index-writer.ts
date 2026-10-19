@@ -1,43 +1,15 @@
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { z } from "zod";
-import { INDEX_MANIFEST_VERSION } from "../../core/index.js";
 import type { IndexContents, IndexManifest, IndexWriter } from "../../core/index.js";
 import { RagError } from "../../shared/index.js";
-
-const MANIFEST_FILE = "manifest.json";
-const CHUNKS_FILE = "chunks.jsonl";
-const VECTORS_FILE = "vectors.bin";
-const KEYWORD_FILE = "keyword.json";
-
-/** A namespace becomes a folder name: letters, digits, `.`, `_` and `-`, never starting with a dot. */
-const NAMESPACE = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
-
-const count = z.number().int().nonnegative();
-
-/** The shape of `manifest.json`. Unknown keys are rejected, so a manifest of another version fails loudly. */
-const manifestSchema = z.strictObject({
-  version: z.literal(INDEX_MANIFEST_VERSION),
-  namespace: z.string(),
-  createdAt: z.string(),
-  gitCommit: z.string().nullable(),
-  configHash: z.string(),
-  fingerprint: z.string(),
-  chunker: z.strictObject({
-    name: z.string(),
-    tokenizer: z.string(),
-    maxTokens: count,
-    overlapTokens: count,
-  }),
-  embedder: z.strictObject({
-    modelId: z.string(),
-    dimensions: count,
-    batchSize: count,
-  }),
-  documents: z.array(z.string()),
-  counts: z.strictObject({ documents: count, chunks: count, parents: count, vectors: count }),
-  timingsMs: z.record(z.string(), z.number()),
-});
+import {
+  CHUNKS_FILE,
+  KEYWORD_FILE,
+  MANIFEST_FILE,
+  manifestSchema,
+  namespaceFolder,
+  VECTORS_FILE,
+} from "./index-format.js";
 
 /**
  * Saves an index as a folder, `<root>/<namespace>/`:
@@ -61,10 +33,7 @@ export class FileIndexWriter implements IndexWriter {
   }
 
   locationOf(namespace: string): string {
-    if (!NAMESPACE.test(namespace) || namespace.includes("..")) {
-      throw new RagError("INVALID_ARGUMENT", `Not an index namespace: "${namespace}"`);
-    }
-    return path.join(this.#root, namespace);
+    return namespaceFolder(this.#root, namespace);
   }
 
   async readManifest(namespace: string): Promise<IndexManifest | undefined> {

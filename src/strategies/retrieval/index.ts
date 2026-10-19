@@ -2,6 +2,7 @@
 export { Bm25Retriever } from "./bm25-retriever.js";
 export { DenseRetriever } from "./dense-retriever.js";
 export type { DenseRetrieverDeps } from "./dense-retriever.js";
+export { ObservedRetriever } from "./observed-retriever.js";
 export { RerankingRetriever } from "./reranking-retriever.js";
 export type { RerankingRetrieverDeps } from "./reranking-retriever.js";
 export { ParentExpandingRetriever } from "./parent-expanding-retriever.js";
