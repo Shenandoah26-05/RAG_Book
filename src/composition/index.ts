@@ -32,3 +32,4 @@ export {
   loaderNames,
   tokenizerNames,
 } from "./registries.js";
+export { buildVectorStore, SQLITE_INDEX_FILE, vectorStoreNames } from "./build-vector-store.js";

@@ -50,6 +50,7 @@
   "dependencies": {
     "js-tiktoken": "^1.0.21",
     "pdfjs-dist": "^6.3.289",
+    "sqlite-vec": "^0.1.9",
     "unpdf": "^1.8.1",
     "uuid": "^14.0.2",
     "zod": "^4.6.5"
