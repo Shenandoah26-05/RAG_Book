@@ -5,6 +5,7 @@ export type { Cleaner } from "./cleaner.js";
 export type { DocumentLoader } from "./document-loader.js";
 export type { DocumentStore } from "./document-store.js";
 export type { EmbedKind, Embedder } from "./embedder.js";
+export type { FusionStrategy, RankedList } from "./fusion.js";
 export type { IndexContents, IndexWriter } from "./index-writer.js";
 export type { KeywordIndex } from "./keyword-index.js";
 export type { ModelHost } from "./model-host.js";
