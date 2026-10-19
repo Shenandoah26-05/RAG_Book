@@ -41,6 +41,8 @@ const report = (overrides: Partial<SearchReport> = {}): SearchReport => ({
     { name: "dense", startMs: 0, durationMs: 18, results: dense },
   ],
   retriever: "hybrid",
+  // reranking is off in the default report, so the candidates are the result
+  candidates: [hit(young, 1, 0.0325, "hybrid"), hit(purr, 2, 0.0323, "hybrid")],
   results: [hit(young, 1, 0.0325, "hybrid"), hit(purr, 2, 0.0323, "hybrid")],
   totalMs: 21,
   stages: [],
@@ -101,6 +103,40 @@ describe("describeSearch", () => {
     expect(out).toContain("3 parents");
     expect(out).toContain("rerank llm");
     expect(out).toMatch(/word word .*…"/);
+  });
+});
+
+describe("describeSearch: with reranking on", () => {
+  const candidates = [
+    hit(young, 1, 0.0325, "hybrid"),
+    hit(purr, 2, 0.0323, "hybrid"),
+    hit(furry, 3, 0.0317, "hybrid"),
+  ];
+  const text = describeSearch(
+    report({
+      settings: { strategy: "hybrid", fusion: "rrf", rerank: { enabled: true, strategy: "llm" } },
+      candidates,
+      results: [hit(furry, 1, 10, "hybrid"), hit(purr, 2, 8, "hybrid")],
+    }),
+  );
+
+  it("shows the retriever's order and the reranked order, one after the other", () => {
+    expect(text).toContain("Candidates (hybrid), before reranking: 3 chunks");
+    expect(text).toContain("Reranked (hybrid, llm): 2 chunks");
+    expect(text.indexOf("Candidates (hybrid)")).toBeLessThan(text.indexOf("Reranked (hybrid"));
+    expect(text).not.toContain("Final (hybrid)");
+  });
+
+  it("lists the candidates in the retriever's order and the result with the reranker's scores", () => {
+    const [before, after] = text.split("Reranked (hybrid, llm)") as [string, string];
+    const order = (part: string) => [...part.matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+    expect(order(before.split("before reranking")[1] ?? "")).toEqual([
+      young.text,
+      purr.text,
+      furry.text.slice(0, 90),
+    ]);
+    expect(after).toMatch(/ 1 +10\.0000 .*"furry animals/);
+    expect(after).toMatch(/ 2 + 8\.0000 .*"cats purr"/);
   });
 });
 

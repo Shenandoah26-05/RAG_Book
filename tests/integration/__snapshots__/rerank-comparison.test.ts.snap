@@ -1,0 +1,101 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`rerank.enabled false and true, same query > the trace, as a snapshot > the stages of the trace, in both cases 1`] = `
+{
+  "off": [
+    {
+      "durationMs": 0,
+      "stage": "bm25",
+      "startMs": 0,
+      "status": "ok",
+      "summary": {
+        "chunks": 3,
+      },
+    },
+    {
+      "durationMs": 0,
+      "stage": "dense",
+      "startMs": 0,
+      "status": "ok",
+      "summary": {
+        "chunks": 5,
+      },
+    },
+  ],
+  "on": [
+    {
+      "durationMs": 0,
+      "stage": "bm25",
+      "startMs": 0,
+      "status": "ok",
+      "summary": {
+        "chunks": 3,
+      },
+    },
+    {
+      "durationMs": 0,
+      "stage": "dense",
+      "startMs": 0,
+      "status": "ok",
+      "summary": {
+        "chunks": 5,
+      },
+    },
+  ],
+}
+`;
+
+exports[`rerank.enabled false and true, same query > the trace, as a snapshot > with reranking off 1`] = `
+"Question: cats
+Index:    recursive__ollama-all-minilm: 5 chunks, 5 searchable, built 2026-10-19T10:00:00.000Z at abc1234
+Settings: hybrid (fusion rrf), rerank off, k = 2, filter: none
+
+bm25: 0 ms, 3 found
+   1    0.7143  p.1 Chapter 1  "cats purr"
+   2    0.5870  p.1 Chapter 1  "kittens are young cats"
+   3    0.3615  p.2 Chapter 2  "furry animals such as cats like to sleep all day long"
+
+dense: 0 ms, 5 found
+   1    0.9950  p.1 Chapter 1  "kittens are young cats"
+   2    0.8000  p.2 Chapter 2  "dogs bark and fetch"
+   3    0.6000  p.2 Chapter 2  "furry animals such as cats like to sleep all day long"
+   4    0.1961  p.1 Chapter 1  "cats purr"
+   5    0.0000  p.2 Chapter 2  "cars have four wheels"
+
+Final (hybrid): 2 chunks
+   1    0.0325  p.1 Chapter 1  "kittens are young cats"
+   2    0.0320  p.1 Chapter 1  "cats purr"
+
+Time: index load 0 ms; bm25 0 ms, dense 0 ms; search total 0 ms"
+`;
+
+exports[`rerank.enabled false and true, same query > the trace, as a snapshot > with reranking on, showing the order before and after 1`] = `
+"Question: cats
+Index:    recursive__ollama-all-minilm: 5 chunks, 5 searchable, built 2026-10-19T10:00:00.000Z at abc1234
+Settings: hybrid (fusion rrf), rerank llm, k = 2, filter: none
+
+bm25: 0 ms, 3 found
+   1    0.7143  p.1 Chapter 1  "cats purr"
+   2    0.5870  p.1 Chapter 1  "kittens are young cats"
+   3    0.3615  p.2 Chapter 2  "furry animals such as cats like to sleep all day long"
+
+dense: 0 ms, 5 found
+   1    0.9950  p.1 Chapter 1  "kittens are young cats"
+   2    0.8000  p.2 Chapter 2  "dogs bark and fetch"
+   3    0.6000  p.2 Chapter 2  "furry animals such as cats like to sleep all day long"
+   4    0.1961  p.1 Chapter 1  "cats purr"
+   5    0.0000  p.2 Chapter 2  "cars have four wheels"
+
+Candidates (hybrid), before reranking: 5 chunks
+   1    0.0325  p.1 Chapter 1  "kittens are young cats"
+   2    0.0320  p.1 Chapter 1  "cats purr"
+   3    0.0317  p.2 Chapter 2  "furry animals such as cats like to sleep all day long"
+   4    0.0161  p.2 Chapter 2  "dogs bark and fetch"
+   5    0.0154  p.2 Chapter 2  "cars have four wheels"
+
+Reranked (hybrid, llm): 2 chunks
+   1   10.0000  p.2 Chapter 2  "furry animals such as cats like to sleep all day long"
+   2    8.0000  p.1 Chapter 1  "cats purr"
+
+Time: index load 0 ms; bm25 0 ms, dense 0 ms; search total 0 ms"
+`;
