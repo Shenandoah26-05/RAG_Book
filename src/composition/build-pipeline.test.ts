@@ -8,7 +8,7 @@ import type { Chunk, Embedder, IndexContents, LlmProvider } from "../core/index.
 import { indexNamespace, readAnswer } from "../pipeline/index.js";
 import { makeDocId } from "../shared/index.js";
 import { Bm25Index } from "../strategies/index.js";
-import { buildPipeline, PROMPT_FILE } from "./build-pipeline.js";
+import { buildPipeline, buildPipelineWithConfig, PROMPT_FILE } from "./build-pipeline.js";
 import type { BuildPipelineOptions } from "./build-pipeline.js";
 
 const DOC = makeDocId("d".repeat(64));
@@ -200,6 +200,57 @@ describe("buildPipeline", () => {
     const options = await setup(contents(), ["--rerank.enabled=true"]);
     const pipeline = await buildPipeline(options);
     expect(pipeline.describe().reranker).toBe("llm");
+  });
+
+  describe("variants and the configuration it was built from", () => {
+    const variantsDir = () => path.join(workdir, "variants");
+    beforeAll(async () => {
+      const { mkdir } = await import("node:fs/promises");
+      await mkdir(variantsDir(), { recursive: true });
+      await writeFile(
+        path.join(variantsDir(), "bm25.json"),
+        JSON.stringify({ retrieval: { strategy: "bm25", k: 2 } }),
+      );
+    });
+
+    it("uses the variant as the config file", async () => {
+      const options = { ...(await setup(contents())), variant: "bm25", variantsDir: variantsDir() };
+      const { pipeline, config, namespace } = await buildPipelineWithConfig(options);
+      expect(pipeline.describe().retriever).toBe("bm25");
+      expect(config.retrieval).toMatchObject({ strategy: "bm25", k: 2 });
+      expect(namespace).toBe(NAMESPACE);
+    });
+
+    it("lets the command line override the variant", async () => {
+      const options = {
+        ...(await setup(contents(), ["--retrieval.k=4"])),
+        variant: "bm25",
+        variantsDir: variantsDir(),
+      };
+      const { config } = await buildPipelineWithConfig(options);
+      expect(config.retrieval).toMatchObject({ strategy: "bm25", k: 4 });
+    });
+
+    it("returns the default configuration when there is no variant", async () => {
+      const { config, pipeline } = await buildPipelineWithConfig(await setup(contents()));
+      expect(config.retrieval.strategy).toBe("hybrid");
+      expect(pipeline.describe().retriever).toBe("hybrid");
+    });
+
+    it("names the variants that exist when one is not found", async () => {
+      const options = { ...(await setup(contents())), variant: "nope", variantsDir: variantsDir() };
+      await expect(buildPipeline(options)).rejects.toMatchObject({
+        code: "INVALID_ARGUMENT",
+        message: expect.stringContaining("bm25") as string,
+      });
+    });
+
+    it("buildPipeline gives the same pipeline as buildPipelineWithConfig", async () => {
+      const options = { ...(await setup(contents())), variant: "bm25", variantsDir: variantsDir() };
+      expect((await buildPipeline(options)).describe()).toEqual(
+        (await buildPipelineWithConfig(options)).pipeline.describe(),
+      );
+    });
   });
 
   it("fetches only k when reranking is off", async () => {

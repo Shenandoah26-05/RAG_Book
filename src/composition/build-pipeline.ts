@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { FileIndexReader } from "../adapters/index.js";
 import { loadConfig } from "../config/index.js";
-import type { Env } from "../config/index.js";
+import type { Env, RagConfig } from "../config/index.js";
 import type { Embedder, LlmProvider, PromptTemplate } from "../core/index.js";
 import { indexNamespace, RagPipeline } from "../pipeline/index.js";
 import { createConsoleLogger, RagError } from "../shared/index.js";
@@ -22,6 +22,7 @@ import { buildRetriever } from "./build-retriever.js";
 import { buildChunker } from "./chunker-registry.js";
 import { loadIndex } from "./load-index.js";
 import { buildTokenizer } from "./registries.js";
+import { argvWithVariant } from "./variants.js";
 
 /** The prompt the pipeline answers with. A new wording is a new file and a change here. */
 export const PROMPT_FILE = "rag-system.v1.txt";
@@ -31,6 +32,10 @@ export const DEFAULT_PROMPTS_DIR = "prompts";
 export interface BuildPipelineOptions {
   readonly argv?: readonly string[];
   readonly env?: Env;
+  /** A variant (see `resolveVariant`) to use as the config file. Without one, the usual config. */
+  readonly variant?: string;
+  /** Where variants are looked up by name. Default `configs/variants`. */
+  readonly variantsDir?: string;
   /** Where indexes are. Default `vectorStore.dir` from the config (`data/index`). */
   readonly indexDir?: string;
   /** Where embedding vectors are cached. Default `data/cache/embeddings`. */
@@ -74,6 +79,25 @@ async function readPrompt(dir: string): Promise<PromptTemplate> {
  *   INVALID_ARGUMENT if there is no index yet; INDEX_CORRUPT if the saved index is damaged
  */
 export async function buildPipeline(options: BuildPipelineOptions = {}): Promise<RagPipeline> {
+  return (await buildPipelineWithConfig(options)).pipeline;
+}
+
+/** A pipeline together with the configuration it was built from and the index it answers from. */
+export interface BuiltPipeline {
+  readonly pipeline: RagPipeline;
+  /** The effective configuration: defaults, file or variant, environment and command line. */
+  readonly config: RagConfig;
+  /** The folder name of the index in use, `<chunker>__<embedder>`. */
+  readonly namespace: string;
+}
+
+/**
+ * `buildPipeline`, for callers that also need to show what was built (the chatbot's `/config`).
+ * The configuration is read once, so what is shown is what the pipeline was built from.
+ */
+export async function buildPipelineWithConfig(
+  options: BuildPipelineOptions = {},
+): Promise<BuiltPipeline> {
   const {
     argv = process.argv.slice(2),
     env = process.env,
@@ -82,7 +106,10 @@ export async function buildPipeline(options: BuildPipelineOptions = {}): Promise
     logger = createConsoleLogger(),
   } = options;
 
-  const config = await loadConfig({ argv, env });
+  const config = await loadConfig({
+    argv: await argvWithVariant(argv, options.variant, options.variantsDir),
+    env,
+  });
   const embedder =
     options.embedder ??
     buildEmbedder(`${config.embedding.provider}:${config.embedding.model}`, {
@@ -131,7 +158,7 @@ export async function buildPipeline(options: BuildPipelineOptions = {}): Promise
       ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
     });
 
-  return new RagPipeline({
+  const pipeline = new RagPipeline({
     transformer: new IdentityQueryTransformer(),
     retriever,
     reranker: rerank.reranker,
@@ -140,4 +167,5 @@ export async function buildPipeline(options: BuildPipelineOptions = {}): Promise
     llm,
     k: config.retrieval.k,
   });
+  return { pipeline, config, namespace };
 }

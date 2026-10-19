@@ -16,6 +16,7 @@
     "chunks": "tsx src/cli/chunks.ts",
     "index": "tsx src/cli/index-docs.ts",
     "search": "tsx src/cli/search.ts",
+    "chat": "tsx src/cli/chat.ts",
     "export:markdown": "tsx scripts/export-markdown.ts",
     "compare:extractors": "tsx scripts/compare-extractors.ts",
     "doctor": "tsx src/cli/doctor.ts",

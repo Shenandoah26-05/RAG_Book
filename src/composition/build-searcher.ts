@@ -9,7 +9,7 @@ import { ObservedRetriever } from "../strategies/index.js";
 import { buildEmbedder, DEFAULT_EMBEDDING_CACHE_DIR } from "./build-embedder.js";
 import { buildRetriever, usesEmbedder } from "./build-retriever.js";
 import { loadIndex } from "./load-index.js";
-import { DEFAULT_VARIANTS_DIR, resolveVariant } from "./variants.js";
+import { argvWithVariant } from "./variants.js";
 
 export interface BuildSearcherOptions {
   readonly argv?: readonly string[];
@@ -96,14 +96,7 @@ export async function buildSearcher(options: BuildSearcherOptions = {}): Promise
     logger = createConsoleLogger(),
   } = options;
 
-  const configArgv =
-    options.variant === undefined
-      ? argv
-      : [
-          "--config",
-          await resolveVariant(options.variant, options.variantsDir ?? DEFAULT_VARIANTS_DIR),
-          ...argv,
-        ];
+  const configArgv = await argvWithVariant(argv, options.variant, options.variantsDir);
   const config = await loadConfig({ argv: configArgv, env });
   const reader = new FileIndexReader(options.indexDir ?? config.vectorStore.dir);
 
