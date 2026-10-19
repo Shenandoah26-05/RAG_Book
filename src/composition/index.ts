@@ -33,3 +33,10 @@ export {
   tokenizerNames,
 } from "./registries.js";
 export { buildVectorStore, SQLITE_INDEX_FILE, vectorStoreNames } from "./build-vector-store.js";
+export {
+  buildReranker,
+  buildRerankingRetriever,
+  rerankerNames,
+  resolveRerank,
+} from "./build-reranker.js";
+export type { RerankPlan } from "./build-reranker.js";
