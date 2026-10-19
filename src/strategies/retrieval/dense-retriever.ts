@@ -8,6 +8,7 @@ import type {
   VectorStore,
 } from "../../core/index.js";
 import { RagError } from "../../shared/index.js";
+import { assertValidRequest, resolveHits } from "./retrieval-helpers.js";
 
 export interface DenseRetrieverDeps {
   /** Must be the model that embedded the index, or the scores mean nothing. */
@@ -51,15 +52,7 @@ export class DenseRetriever implements Retriever {
 
   async retrieve(query: Query, options: RetrieveOptions): Promise<readonly RetrievedChunk[]> {
     const { k, filter } = options;
-    if (!Number.isInteger(k) || k < 1) {
-      throw new RagError(
-        "INVALID_ARGUMENT",
-        `k must be a whole number of 1 or more, got ${String(k)}`,
-      );
-    }
-    if (query.text.trim() === "") {
-      throw new RagError("INVALID_ARGUMENT", "The question is blank");
-    }
+    assertValidRequest(k, query.text);
 
     const [vector, ...extra] = await this.#embedder.embed([query.text], "query");
     if (vector === undefined || extra.length > 0) {
@@ -67,19 +60,6 @@ export class DenseRetriever implements Retriever {
     }
 
     const hits = await this.#vectorStore.search(vector, k, filter);
-    const chunks = await this.#chunkStore.get(hits.map((hit) => hit.id));
-
-    return hits.map((hit, index) => {
-      const chunk = chunks[index];
-      // a vector without a chunk means the two stores are out of step: the index is damaged
-      if (chunk === undefined) {
-        throw new RagError(
-          "INTERNAL",
-          `The vector store found chunk ${hit.id} but the chunk store does not have it. ` +
-            'The index is inconsistent: rebuild it with "pnpm index --force".',
-        );
-      }
-      return { chunk, score: hit.score, rank: index + 1, retriever: this.name };
-    });
+    return resolveHits(hits, this.#chunkStore, this.name);
   }
 }
