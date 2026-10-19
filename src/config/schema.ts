@@ -57,6 +57,7 @@ export const ragConfigSchema = z
       enabled: flag,
       strategy: name,
       candidates: positiveInt,
+      concurrency: positiveInt,
     }),
     generation: z.strictObject({
       provider: name,

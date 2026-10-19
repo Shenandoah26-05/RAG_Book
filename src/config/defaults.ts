@@ -16,7 +16,7 @@ export const DEFAULT_CONFIG: RagConfig = {
   embedding: { provider: "ollama", model: "all-minilm", batchSize: 32 },
   vectorStore: { type: "in-memory", dir: "data/index" },
   retrieval: { strategy: "hybrid", k: 5, fusion: "rrf" },
-  rerank: { enabled: false, strategy: "llm", candidates: 20 },
+  rerank: { enabled: false, strategy: "llm", candidates: 20, concurrency: 4 },
   generation: {
     provider: "ollama",
     model: "llama3.2",

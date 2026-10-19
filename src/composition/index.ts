@@ -39,7 +39,8 @@ export {
   rerankerNames,
   resolveRerank,
 } from "./build-reranker.js";
-export type { RerankPlan } from "./build-reranker.js";
+export { RERANK_PROMPT_FILE } from "./build-reranker.js";
+export type { RerankContext, RerankPlan } from "./build-reranker.js";
 export { buildLlmProvider, llmProviderNames } from "./build-llm-provider.js";
 export type { BuildLlmProviderOptions } from "./build-llm-provider.js";
 export { buildPipeline, DEFAULT_PROMPTS_DIR, PROMPT_FILE } from "./build-pipeline.js";
