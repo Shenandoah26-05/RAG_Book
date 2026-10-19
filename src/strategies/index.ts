@@ -7,3 +7,4 @@ export * from "./ranking/index.js";
 export * from "./reranking/index.js";
 export * from "./prompting/index.js";
 export * from "./structure/index.js";
+export * from "./query-transform/index.js";

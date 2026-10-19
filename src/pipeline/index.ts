@@ -6,3 +6,5 @@ export type { IngestDeps, IngestOptions, IngestResult } from "./ingest.js";
 export { buildIndex } from "./build-index.js";
 export type { IndexDeps, IndexOptions, IndexResult, IndexSettings } from "./build-index.js";
 export { indexNamespace } from "./index-namespace.js";
+export { RagPipeline, readAnswer, STAGES } from "./rag-pipeline.js";
+export type { AskOptions, RagAnswer, RagPipelineDeps } from "./rag-pipeline.js";
