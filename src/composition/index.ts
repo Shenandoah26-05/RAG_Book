@@ -43,6 +43,25 @@ export {
 export type { RerankContext, RerankPlan } from "./build-reranker.js";
 export { buildLlmProvider, llmProviderNames } from "./build-llm-provider.js";
 export type { BuildLlmProviderOptions } from "./build-llm-provider.js";
+export {
+  buildPipeline,
+  buildPipelineWithConfig,
+  DEFAULT_PROMPTS_DIR,
+  PROMPT_FILE,
+} from "./build-pipeline.js";
+export type { BuildPipelineOptions, BuiltPipeline } from "./build-pipeline.js";
+export { buildChat } from "./build-chat.js";
+export type { BuildChatOptions } from "./build-chat.js";
+export {
+  CHAT_HELP,
+  citedNumbers,
+  describeChatConfig,
+  describeSources,
+  describeTrace,
+} from "./chat-format.js";
+export type { ChatConfigInfo } from "./chat-format.js";
+export { ChatSession } from "./chat-session.js";
+export type { ChatOutput, ChatResult, ChatSessionOptions } from "./chat-session.js";
 export { buildPipeline, DEFAULT_PROMPTS_DIR, PROMPT_FILE } from "./build-pipeline.js";
 export type { BuildPipelineOptions } from "./build-pipeline.js";
 export { buildRetriever, fusionNames, retrieverNames, usesEmbedder } from "./build-retriever.js";
@@ -58,4 +77,14 @@ export type {
   Searcher,
 } from "./build-searcher.js";
 export { describeFilter, describeSearch, searchToJson } from "./search-summary.js";
+export {
+  buildRetriever,
+  fusionNames,
+  retrievalStrategyNames,
+  usesEmbedder,
+} from "./build-retriever.js";
+export type { BuildRetrieverOptions } from "./build-retriever.js";
+export { loadIndex } from "./load-index.js";
+export type { LoadedIndex } from "./load-index.js";
+export { argvWithVariant, DEFAULT_VARIANTS_DIR, listVariants, resolveVariant } from "./variants.js";
 export { DEFAULT_VARIANTS_DIR, listVariants, resolveVariant } from "./variants.js";
