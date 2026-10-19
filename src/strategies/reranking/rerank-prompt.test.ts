@@ -71,3 +71,14 @@ describe("fillRerankPrompt", () => {
     expect(fillRerankPrompt(template, "  Q  ", "\n P \n")).toBe("Judge.\nQ: Q\nP: P\nAnswer JSON.");
   });
 });
+
+describe("parseRerankPrompt: line endings", () => {
+  it("reads a prompt checked out with Windows line endings the same as one with Unix ones", () => {
+    const unix = "Question:\n{{question}}\n\nPassage:\n{{passage}}\n";
+    const windows = unix.replaceAll("\n", "\r\n");
+    expect(parseRerankPrompt("rerank-relevance.v1.txt", windows)).toEqual(
+      parseRerankPrompt("rerank-relevance.v1.txt", unix),
+    );
+    expect(parseRerankPrompt("rerank-relevance.v1.txt", windows).text).not.toContain("\r");
+  });
+});

@@ -109,6 +109,16 @@ export async function buildPipeline(options: BuildPipelineOptions = {}): Promise
     logger,
     ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
   });
+  const retriever = buildRetriever(config.retrieval, { embedder, index });
+
+  const llm =
+    options.llm ??
+    buildLlmProvider(config.generation, {
+      env,
+      ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
+    });
+  // the "llm" reranker asks the same model that answers
+  const rerank = resolveRerank(config.rerank, { llm, logger });
 
   const { ordering } = config.generation;
   if (!isOrderingName(ordering)) {
@@ -123,13 +133,6 @@ export async function buildPipeline(options: BuildPipelineOptions = {}): Promise
     budgetTokens: config.generation.contextBudgetTokens,
     ordering,
   });
-
-  const llm =
-    options.llm ??
-    buildLlmProvider(config.generation, {
-      env,
-      ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
-    });
 
   return new RagPipeline({
     transformer: new IdentityQueryTransformer(),
