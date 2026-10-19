@@ -19,3 +19,14 @@ export interface ScoredChunk {
   readonly chunk: Chunk;
   readonly score: number;
 }
+
+/** A chunk a retriever found for a question, with where it stands in that retriever's ranking. */
+export interface RetrievedChunk {
+  readonly chunk: Chunk;
+  /** Higher is more relevant. Only comparable with scores from the same retriever. */
+  readonly score: number;
+  /** Position in the result, starting at 1 for the best. */
+  readonly rank: number;
+  /** The `name` of the retriever that found it, e.g. "dense". */
+  readonly retriever: string;
+}
