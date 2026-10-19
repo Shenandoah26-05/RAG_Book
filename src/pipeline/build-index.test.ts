@@ -11,7 +11,12 @@ import type {
   ParsedDocument,
 } from "../core/index.js";
 import { makeDocId, noopLogger, RagError } from "../shared/index.js";
-import { FlatVectorStore, InMemoryChunkStore, RecursiveChunker } from "../strategies/index.js";
+import {
+  Bm25Index,
+  FlatVectorStore,
+  InMemoryChunkStore,
+  RecursiveChunker,
+} from "../strategies/index.js";
 import { createChunk } from "../strategies/index.js";
 import { makeDocument } from "../testing/make-document.testing.js";
 import { buildIndex } from "./build-index.js";
@@ -71,12 +76,16 @@ function fakeDocuments(...docs: ParsedDocument[]): DocumentStore {
 function memoryWriter(): IndexWriter & { writes: IndexContents[] } {
   const writes: IndexContents[] = [];
   const kept = new Map<string, IndexManifest>();
+  const keywords = new Map<string, string>();
   return {
     writes,
     readManifest: (namespace) => Promise.resolve(kept.get(namespace)),
+    readKeywordIndex: (namespace) => Promise.resolve(keywords.get(namespace)),
     write: (contents) => {
       writes.push(contents);
       kept.set(contents.manifest.namespace, contents.manifest);
+      if (contents.keywordIndex === undefined) keywords.delete(contents.manifest.namespace);
+      else keywords.set(contents.manifest.namespace, contents.keywordIndex);
       return Promise.resolve(`/index/${contents.manifest.namespace}`);
     },
     locationOf: (namespace) => `/index/${namespace}`,
@@ -112,6 +121,11 @@ function setup(options: { chunker?: Chunker; docs?: ParsedDocument[] } = {}) {
     now: () => new Date("2026-10-19T10:00:00.000Z"),
   };
   return { deps, embedder, writer, vectorStore, chunkStore, ids: docs.map((d) => d.id) };
+}
+
+/** Any chunk, to put something in a store before the build. */
+function docChunk() {
+  return createChunk(docB, "recursive", { start: 0, end: 10 });
 }
 
 describe("buildIndex", () => {
@@ -197,6 +211,68 @@ describe("buildIndex", () => {
     });
     expect(manifest.fingerprint).toMatch(/^[0-9a-f]{64}$/);
     expect(Object.keys(manifest.timingsMs)).toEqual(["chunk", "embed", "store", "total"]);
+  });
+
+  describe("keyword index", () => {
+    it("indexes the searchable chunks and hands its text to the writer", async () => {
+      const { deps, writer, ids } = setup();
+      const keywordIndex = new Bm25Index();
+      await buildIndex({ ...deps, keywordIndex }, ids, settings());
+
+      const { chunks, keywordIndex: saved } = writer.writes[0] as IndexContents;
+      expect(keywordIndex.count()).toBe(chunks.length);
+      expect(saved).toBe(keywordIndex.serialize());
+      // what was saved finds a chunk by its words
+      const restored = Bm25Index.deserialize(saved ?? "");
+      const [best] = await restored.search("cosine similarity angle", 1);
+      expect(chunks.find((c) => c.id === best?.id)?.text).toMatch(/Cosine/);
+    });
+
+    it("does not index the parents of a parent-child chunker", async () => {
+      const inner = recursive();
+      const chunker: Chunker = {
+        name: inner.name,
+        chunk: (doc) => inner.chunk(doc),
+        parents: (doc) => Promise.resolve([createChunk(doc, inner.name, { start: 0, end: 30 })]),
+      };
+      const { deps, writer, ids } = setup({ chunker, docs: [docA] });
+      const keywordIndex = new Bm25Index();
+      await buildIndex({ ...deps, keywordIndex }, ids, settings());
+      const { vectors, chunks } = writer.writes[0] as IndexContents;
+      expect(chunks.length).toBeGreaterThan(vectors.length);
+      expect(keywordIndex.count()).toBe(vectors.length);
+    });
+
+    it("saves none when no keyword index is given", async () => {
+      const { deps, writer, ids } = setup();
+      await buildIndex(deps, ids, settings());
+      expect(writer.writes[0]).not.toHaveProperty("keywordIndex");
+    });
+
+    it("is up to date, and skipped, once the keyword index is saved too", async () => {
+      const { deps, writer, ids } = setup();
+      await buildIndex({ ...deps, keywordIndex: new Bm25Index() }, ids, settings());
+      const again = await buildIndex({ ...deps, keywordIndex: new Bm25Index() }, ids, settings());
+      expect(again.status).toBe("skipped");
+      expect(writer.writes).toHaveLength(1);
+    });
+
+    it("builds again when the saved index was made without a keyword index", async () => {
+      const { deps, writer, ids } = setup();
+      await buildIndex(deps, ids, settings());
+      const again = await buildIndex({ ...deps, keywordIndex: new Bm25Index() }, ids, settings());
+      expect(again.status).toBe("built");
+      expect(writer.writes[1]).toHaveProperty("keywordIndex");
+    });
+
+    it("rejects a keyword index that was not empty", async () => {
+      const { deps, ids } = setup();
+      const keywordIndex = new Bm25Index();
+      keywordIndex.add([{ ...docChunk(), text: "left over" }]);
+      await expect(buildIndex({ ...deps, keywordIndex }, ids, settings())).rejects.toThrow(
+        /keyword index holds/,
+      );
+    });
   });
 
   describe("running again", () => {

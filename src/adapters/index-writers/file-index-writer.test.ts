@@ -122,6 +122,34 @@ describe("FileIndexWriter", () => {
     expect(await readdir(root)).toEqual(["recursive__ollama-all-minilm"]);
   });
 
+  it("writes keyword.json next to the rest, and reads it back", async () => {
+    const keywordIndex = '{"type":"bm25"}';
+    const location = await writer.write({ ...contents(), keywordIndex });
+    expect((await readdir(location)).sort()).toEqual([
+      "chunks.jsonl",
+      "keyword.json",
+      "manifest.json",
+      "vectors.bin",
+    ]);
+    expect(await writer.readKeywordIndex("recursive__ollama-all-minilm")).toBe(keywordIndex);
+  });
+
+  it("reads no keyword index where there is none, or no index at all", async () => {
+    expect(await writer.readKeywordIndex("recursive__ollama-all-minilm")).toBeUndefined();
+    await writer.write(contents());
+    expect(await writer.readKeywordIndex("recursive__ollama-all-minilm")).toBeUndefined();
+  });
+
+  it("drops the keyword index of an earlier build that the new one does not have", async () => {
+    await writer.write({ ...contents(), keywordIndex: "{}" });
+    await writer.write(contents());
+    expect(await writer.readKeywordIndex("recursive__ollama-all-minilm")).toBeUndefined();
+  });
+
+  it("rejects a namespace that could leave the folder when reading a keyword index", async () => {
+    await expect(writer.readKeywordIndex("../x")).rejects.toThrow(/Not an index namespace/);
+  });
+
   it("rejects a damaged manifest, saying to re-run with --force", async () => {
     const location = await writer.write(contents());
     await writeFile(path.join(location, "manifest.json"), "{ not json");

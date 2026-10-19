@@ -8,7 +8,7 @@ import { buildIndex, indexNamespace } from "../pipeline/index.js";
 import type { IndexResult } from "../pipeline/index.js";
 import { createConsoleLogger, RagError } from "../shared/index.js";
 import type { Logger } from "../shared/index.js";
-import { FlatVectorStore, InMemoryChunkStore } from "../strategies/index.js";
+import { Bm25Index, FlatVectorStore, InMemoryChunkStore } from "../strategies/index.js";
 import { buildChunkerRegistry } from "./build-chunkers.js";
 import { buildEmbedder, DEFAULT_EMBEDDING_CACHE_DIR } from "./build-embedder.js";
 import { DEFAULT_PROCESSED_DIR } from "./build-ingest.js";
@@ -117,6 +117,7 @@ export async function buildIndexer(options: BuildIndexerOptions = {}): Promise<I
           embedder,
           vectorStore: new FlatVectorStore(embedder.dimensions),
           chunkStore: new InMemoryChunkStore(),
+          keywordIndex: new Bm25Index(),
           writer: new FileIndexWriter(indexDir),
           logger,
         },
