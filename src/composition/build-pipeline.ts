@@ -98,15 +98,17 @@ export async function buildPipeline(options: BuildPipelineOptions = {}): Promise
   const chunker = buildChunker(config.chunking, buildChunkerRegistry(tokenizer));
   const namespace = indexNamespace(chunker.name, embedder.modelId);
   const reader = new FileIndexReader(options.indexDir ?? config.vectorStore.dir);
-  const contents = await reader.read(namespace);
-  if (contents === undefined) {
-    throw new RagError(
-      "INVALID_ARGUMENT",
-      `There is no index "${namespace}" yet. Run "pnpm index" first.`,
-    );
-  }
-  const index = await loadIndex(contents, config.vectorStore);
+  const index = await loadIndex(reader, namespace, logger, config.vectorStore);
 
+  // no `rerank` here: the pipeline has a rerank stage of its own
+  const retriever = buildRetriever({ retrieval: config.retrieval, index, embedder });
+  const rerank = resolveRerank(config.rerank, {
+    // the "llm" reranker judges with the answering model, unless a model is given
+    ...(options.llm === undefined ? { generation: config.generation } : { llm: options.llm }),
+    env,
+    logger,
+    ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
+  });
   const retriever = buildRetriever(config.retrieval, { embedder, index });
 
   const llm =

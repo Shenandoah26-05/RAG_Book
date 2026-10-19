@@ -15,6 +15,7 @@ import {
   writeFixtureIndex,
   young,
 } from "./search-fixture.testing.js";
+import { loadIndex } from "./load-index.js";
 import { loadIndex, openIndex } from "./load-index.js";
 
 const settings = DEFAULT_CONFIG.vectorStore;

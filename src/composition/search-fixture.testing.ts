@@ -1,4 +1,6 @@
 // A small index written to disk, for the tests of loading and searching. Not part of the build.
+// It lives in composition/ and not in testing/ because it builds real adapters and strategies,
+// which test helpers in testing/ may not import.
 import { FileIndexWriter } from "../adapters/index.js";
 import { INDEX_MANIFEST_VERSION, makeChunkId } from "../core/index.js";
 import type { Chunk, DocId, IndexContents } from "../core/index.js";
