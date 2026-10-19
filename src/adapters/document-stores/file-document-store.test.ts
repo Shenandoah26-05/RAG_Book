@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { DocId, ParsedDocument, Section } from "../../core/index.js";
-import { RagError } from "../../shared/index.js";
+import { makeDocId, RagError } from "../../shared/index.js";
 import { makeDocument } from "../../testing/make-document.testing.js";
 import { FileDocumentStore } from "./file-document-store.js";
 
@@ -166,4 +166,23 @@ describe("FileDocumentStore", () => {
       await expect(store.load(bad)).rejects.toThrow(RagError);
     },
   );
+});
+
+describe("FileDocumentStore.list", () => {
+  it("lists the stored ids sorted, ignoring other files, and nothing for a missing folder", async () => {
+    const folder = path.join(await mkdtemp(path.join(tmpdir(), "rag-list-")), "processed");
+    try {
+      const store = new FileDocumentStore(folder);
+      expect(await store.list()).toEqual([]);
+      const a = makeDocument(["alpha"]);
+      const b = { ...makeDocument(["beta"]), id: makeDocId("b".repeat(64)) };
+      await store.save(b);
+      await store.save(a);
+      await writeFile(path.join(folder, "notes.json"), "{}");
+      await writeFile(path.join(folder, `${a.id}.recursive.chunks.md`), "x");
+      expect(await store.list()).toEqual([a.id, b.id].sort());
+    } finally {
+      await rm(path.dirname(folder), { recursive: true, force: true });
+    }
+  });
 });

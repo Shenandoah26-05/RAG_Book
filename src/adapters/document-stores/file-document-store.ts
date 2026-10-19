@@ -1,4 +1,4 @@
-import { mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { DocId, DocumentStore, ParsedDocument } from "../../core/index.js";
 import { isDocId, RagError } from "../../shared/index.js";
@@ -51,6 +51,21 @@ export class FileDocumentStore implements DocumentStore {
   // -------------------------------------------------------------------------------------------
   // Reading
   // -------------------------------------------------------------------------------------------
+
+  /** The ids of every document in the folder, sorted. Files that are not `<docId>.json` are ignored. */
+  async list(): Promise<readonly DocId[]> {
+    let names: string[];
+    try {
+      names = await readdir(this.#folder);
+    } catch (error) {
+      if (isNotFound(error)) return [];
+      throw error;
+    }
+    return names
+      .filter((name) => name.endsWith(".json") && isDocId(name.slice(0, -".json".length)))
+      .map((name) => name.slice(0, -".json".length) as DocId)
+      .sort();
+  }
 
   /** The stored document, or undefined if there is none. Rejects if the file is damaged. */
   async load(id: DocId): Promise<ParsedDocument | undefined> {

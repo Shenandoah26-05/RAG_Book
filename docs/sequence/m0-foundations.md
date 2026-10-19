@@ -484,7 +484,7 @@ sequenceDiagram
   participant CLI as cli entry
 
   Src--xRE: throw new RagError(code, message, {cause})
-  Note right of RE: codes: CONFIG_INVALID, INGESTION_FAILED, INVALID_ARGUMENT,<br/>PROVIDER_UNAVAILABLE, INTERNAL
+  Note right of RE: codes: CONFIG_INVALID, INGESTION_FAILED, INDEX_CORRUPT,<br/>INVALID_ARGUMENT, PROVIDER_UNAVAILABLE, INTERNAL
   Src--xCE: ConfigError(issues) extends RagError with CONFIG_INVALID
   Log->>SE: serializeError(error)
   SE->>SE: name, message, code, stack, then recurse on cause (max depth 5)

@@ -80,6 +80,7 @@ function setup(options: { stored?: boolean; loadedId?: DocId; hash?: string } = 
   };
   const store: DocumentStore = {
     has: (id) => Promise.resolve(stored.has(id)),
+    list: () => Promise.resolve([...stored].sort()),
     load: () => Promise.resolve(undefined),
     save: (doc) => {
       calls.push("save");
