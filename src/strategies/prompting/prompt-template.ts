@@ -21,12 +21,18 @@ export function parsePromptTemplate(fileName: string, text: string): PromptTempl
       `Prompt file "${fileName}" must be named <id>.v<N>.txt, e.g. rag-system.v1.txt`,
     );
   }
-  const placeholders = text.split(SOURCES_PLACEHOLDER).length - 1;
+  // a prompt reads the same on every system: a checkout with Windows line endings changes nothing
+  const normalised = text.replaceAll("\r\n", "\n");
+  const placeholders = normalised.split(SOURCES_PLACEHOLDER).length - 1;
   if (placeholders !== 1) {
     throw new RagError(
       "INVALID_ARGUMENT",
       `Prompt ${fileName} must contain ${SOURCES_PLACEHOLDER} exactly once, found ${placeholders.toString()}`,
     );
   }
-  return { id: match.groups.id as string, version: match.groups.version as string, text };
+  return {
+    id: match.groups.id as string,
+    version: match.groups.version as string,
+    text: normalised,
+  };
 }
