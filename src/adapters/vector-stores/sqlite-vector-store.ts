@@ -23,6 +23,9 @@ const COLUMNS = { docId: "doc_id", strategy: "strategy" } as const;
 const isPage = (n: number | undefined): boolean =>
   n === undefined || (Number.isInteger(n) && n >= 1);
 
+/** A section title as compared by a `section` clause: no surrounding spaces, no case. */
+const fold = (title: string): string => title.trim().toLowerCase();
+
 const toBlob = (vector: Float32Array): Uint8Array =>
   new Uint8Array(vector.buffer, vector.byteOffset, vector.byteLength);
 
@@ -75,7 +78,8 @@ export class SqliteVectorStore implements VectorStore {
       if (records.length === 0) return;
       const put = this.#db.prepare(
         `INSERT OR REPLACE INTO records
-           (id, vector, doc_id, strategy, page_start, page_end) VALUES (?, ?, ?, ?, ?, ?)`,
+           (id, vector, doc_id, strategy, page_start, page_end, section_path)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
       );
       this.#db.exec("BEGIN");
       try {
@@ -87,6 +91,8 @@ export class SqliteVectorStore implements VectorStore {
             metadata.strategy,
             metadata.pageStart,
             metadata.pageEnd,
+            // folded once here, so a filter can compare titles with plain equality in SQL
+            JSON.stringify(metadata.sectionPath.map(fold)),
           );
         }
         this.#db.exec("COMMIT");
@@ -158,10 +164,17 @@ export class SqliteVectorStore implements VectorStore {
         doc_id     TEXT NOT NULL,
         strategy   TEXT NOT NULL,
         page_start INTEGER NOT NULL,
-        page_end   INTEGER NOT NULL
+        page_end   INTEGER NOT NULL,
+        section_path TEXT NOT NULL DEFAULT '[]'
       );
       CREATE INDEX IF NOT EXISTS records_doc ON records (doc_id);
     `);
+    // a file made before section filters existed has no such column; its rows get an empty path,
+    // so they match no section until the index is rebuilt
+    const columns = this.#db.prepare("PRAGMA table_info(records)").all();
+    if (!columns.some((column) => column["name"] === "section_path")) {
+      this.#db.exec("ALTER TABLE records ADD COLUMN section_path TEXT NOT NULL DEFAULT '[]'");
+    }
     const row = this.#db.prepare("SELECT value FROM store_info WHERE key = 'dimensions'").get();
     if (row === undefined) {
       this.#db
@@ -212,6 +225,21 @@ function toSql(clause: FilterClause): Sql {
         sql: `${COLUMNS[clause.field]} IN (${clause.values.map(() => "?").join(", ")})`,
         params: [...clause.values],
       };
+    case "section": {
+      // the stored path starts with the clause's path, title by title (a missing title is NULL)
+      const titles = clause.path.map(fold);
+      if (titles.length === 0 || titles.some((title) => title === "")) {
+        throw invalid(
+          `Invalid section path ${JSON.stringify(clause.path)}: give at least one title, none blank`,
+        );
+      }
+      return {
+        sql: titles
+          .map((_, i) => `json_extract(section_path, '$[${i.toString()}]') = ?`)
+          .join(" AND "),
+        params: titles,
+      };
+    }
     case "pageRange": {
       const { from, to } = clause;
       if (!isPage(from) || !isPage(to) || (from !== undefined && to !== undefined && from > to)) {

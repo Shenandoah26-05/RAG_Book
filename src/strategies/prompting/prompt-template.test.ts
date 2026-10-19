@@ -29,3 +29,13 @@ describe("parsePromptTemplate", () => {
     expect(template.version).toBe("v1");
   });
 });
+
+describe("parsePromptTemplate: line endings", () => {
+  it("reads a prompt checked out with Windows line endings the same as one with Unix ones", () => {
+    const unix = "Answer from these sources:\n{{sources}}\n";
+    const windows = unix.replaceAll("\n", "\r\n");
+    expect(parsePromptTemplate("rag-system.v1.txt", windows)).toEqual(
+      parsePromptTemplate("rag-system.v1.txt", unix),
+    );
+  });
+});
