@@ -15,5 +15,6 @@
     "maxOutputTokens": 1024,
     "contextBudgetTokens": 3000,
     "ordering": "sandwich"
-  }
+  },
+  "grounding": { "minScore": 0 }
 }
