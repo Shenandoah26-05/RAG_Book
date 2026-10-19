@@ -36,19 +36,19 @@ export { buildVectorStore, SQLITE_INDEX_FILE, vectorStoreNames } from "./build-v
 export {
   buildReranker,
   buildRerankingRetriever,
+  RERANK_PROMPT_FILE,
   rerankerNames,
   resolveRerank,
 } from "./build-reranker.js";
-export { RERANK_PROMPT_FILE } from "./build-reranker.js";
 export type { RerankContext, RerankPlan } from "./build-reranker.js";
 export { buildLlmProvider, llmProviderNames } from "./build-llm-provider.js";
 export type { BuildLlmProviderOptions } from "./build-llm-provider.js";
 export { buildPipeline, DEFAULT_PROMPTS_DIR, PROMPT_FILE } from "./build-pipeline.js";
 export type { BuildPipelineOptions } from "./build-pipeline.js";
-export { buildRetriever, fusionNames, retrieverNames } from "./build-retriever.js";
+export { buildRetriever, fusionNames, retrieverNames, usesEmbedder } from "./build-retriever.js";
 export type { RetrieverContext } from "./build-retriever.js";
-export { loadIndex } from "./load-index.js";
-export type { LoadedIndex } from "./load-index.js";
+export { loadIndex, openIndex } from "./load-index.js";
+export type { LoadedIndex, OpenedIndex } from "./load-index.js";
 export { buildSearcher } from "./build-searcher.js";
 export type {
   BuildSearcherOptions,
@@ -58,13 +58,4 @@ export type {
   Searcher,
 } from "./build-searcher.js";
 export { describeFilter, describeSearch, searchToJson } from "./search-summary.js";
-export {
-  buildRetriever,
-  fusionNames,
-  retrievalStrategyNames,
-  usesEmbedder,
-} from "./build-retriever.js";
-export type { BuildRetrieverOptions } from "./build-retriever.js";
-export { loadIndex } from "./load-index.js";
-export type { LoadedIndex } from "./load-index.js";
 export { DEFAULT_VARIANTS_DIR, listVariants, resolveVariant } from "./variants.js";

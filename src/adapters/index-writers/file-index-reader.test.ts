@@ -1,4 +1,3 @@
-import { mkdtemp, rm, truncate, writeFile } from "node:fs/promises";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -13,7 +12,6 @@ const DOC = makeDocId("a".repeat(64));
 const DIMENSIONS = 3;
 const NAMESPACE = "recursive__ollama-all-minilm";
 
-function chunk(text: string, start: number, parentId?: Chunk["id"]): Chunk {
 function chunk(text: string, start: number, extra: Partial<Chunk> = {}): Chunk {
   return {
     id: makeChunkId({
@@ -24,12 +22,6 @@ function chunk(text: string, start: number, extra: Partial<Chunk> = {}): Chunk {
       text,
     }),
     text,
-    ...(parentId === undefined ? {} : { parentId }),
-    metadata: {
-      docId: DOC,
-      pageStart: 2,
-      pageEnd: 3,
-      sectionPath: ["Chapter 1"],
     metadata: {
       docId: DOC,
       pageStart: 1,
@@ -39,14 +31,6 @@ function chunk(text: string, start: number, extra: Partial<Chunk> = {}): Chunk {
       charEnd: start + text.length,
       strategy: "recursive",
     },
-  };
-}
-
-const manifest = (): IndexManifest => ({
-  version: INDEX_MANIFEST_VERSION,
-  namespace: NAMESPACE,
-  createdAt: "2026-10-19T10:00:00.000Z",
-  gitCommit: null,
     ...extra,
   };
 }
@@ -69,7 +53,6 @@ const manifest = (overrides: Partial<IndexManifest> = {}): IndexManifest => ({
   embedder: { modelId: "ollama:all-minilm", dimensions: DIMENSIONS, batchSize: 32 },
   documents: [DOC],
   counts: { documents: 1, chunks: 3, parents: 1, vectors: 2 },
-  timingsMs: { total: 6 },
   timingsMs: { chunk: 1, embed: 2, store: 3, total: 6 },
   ...overrides,
 });
@@ -87,9 +70,6 @@ const contents = (): IndexContents => ({
 describe("FileIndexReader", () => {
   let root: string;
   let reader: FileIndexReader;
-  beforeEach(async () => {
-    root = path.join(await mkdtemp(path.join(tmpdir(), "rag-index-read-")), "index");
-    reader = new FileIndexReader(root);
   let folder: string;
   beforeEach(async () => {
     root = path.join(await mkdtemp(path.join(tmpdir(), "rag-reader-")), "index");
@@ -100,71 +80,6 @@ describe("FileIndexReader", () => {
     await rm(path.dirname(root), { recursive: true, force: true });
   });
 
-  const parent = chunk("first chunk second chunk", 0);
-  const first = chunk("first chunk", 0, parent.id);
-  const second = chunk("second chunk", 12, parent.id);
-  const contents = (): IndexContents => ({
-    manifest: manifest(),
-    vectors: [
-      { id: first.id, vector: Float32Array.of(1, 0, 0), metadata: first.metadata },
-      { id: second.id, vector: Float32Array.of(0, 0.5, 0.25), metadata: second.metadata },
-    ],
-    chunks: [first, second, parent],
-    keywordIndex: '{"kw":true}',
-  });
-  const save = async (): Promise<string> => new FileIndexWriter(root).write(contents());
-
-  it("reads back what the writer saved", async () => {
-    await save();
-    const read = await reader.read(NAMESPACE);
-    expect(read?.manifest).toEqual(manifest());
-    expect(read?.chunks).toEqual([first, second, parent]);
-    expect(read?.vectors.map((v) => [v.id, [...v.vector]])).toEqual([
-      [first.id, [1, 0, 0]],
-      [second.id, [0, 0.5, 0.25]],
-    ]);
-    expect(read?.vectors[0]?.metadata).toEqual(first.metadata);
-    expect(read?.keywordIndex).toBe('{"kw":true}');
-  });
-
-  it("leaves the keyword index out when there is none", async () => {
-    await new FileIndexWriter(root).write({ ...contents(), keywordIndex: undefined });
-    expect((await reader.read(NAMESPACE))?.keywordIndex).toBeUndefined();
-  });
-
-  it("returns undefined when there is no index", async () => {
-    expect(await reader.read(NAMESPACE)).toBeUndefined();
-  });
-
-  it("rejects a vector file of the wrong size, naming the file", async () => {
-    const folder = await save();
-    await truncate(path.join(folder, "vectors.bin"), 8);
-    await expect(reader.read(NAMESPACE)).rejects.toMatchObject({
-      code: "INDEX_CORRUPT",
-      message: expect.stringContaining("vectors.bin") as string,
-    });
-  });
-
-  it("rejects a chunk file with a line that is not a chunk", async () => {
-    const folder = await save();
-    await writeFile(path.join(folder, "chunks.jsonl"), '{"indexed":true}\n');
-    await expect(reader.read(NAMESPACE)).rejects.toMatchObject({
-      code: "INDEX_CORRUPT",
-      message: expect.stringContaining("line 1") as string,
-    });
-  });
-
-  it("rejects a chunk file that disagrees with the manifest", async () => {
-    const folder = await save();
-    const line = JSON.stringify({ indexed: false, chunk: parent });
-    await writeFile(path.join(folder, "chunks.jsonl"), `${line}\n`);
-    await expect(reader.read(NAMESPACE)).rejects.toMatchObject({ code: "INDEX_CORRUPT" });
-  });
-
-  it("rejects a missing file as INDEX_CORRUPT", async () => {
-    const folder = await save();
-    await rm(path.join(folder, "vectors.bin"));
-    await expect(reader.read(NAMESPACE)).rejects.toMatchObject({ code: "INDEX_CORRUPT" });
   it("reads back exactly what the writer wrote", async () => {
     expect(await reader.read(NAMESPACE)).toEqual(contents());
   });

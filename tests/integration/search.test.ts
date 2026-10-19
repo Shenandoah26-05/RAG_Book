@@ -16,7 +16,7 @@ import {
   purr,
   writeFixtureIndex,
   young,
-} from "../../src/testing/search-fixture.testing.js";
+} from "../../src/composition/search-fixture.testing.js";
 
 const ROOT = path.resolve(import.meta.dirname, "../..");
 const run = promisify(execFile);

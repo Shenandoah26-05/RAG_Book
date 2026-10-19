@@ -1,0 +1,2 @@
+# Prompts are sent to a model word for word, so they are the same bytes on every system.
+prompts/*.txt text eol=lf
