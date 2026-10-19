@@ -7,6 +7,7 @@ import type {
   Embedder,
   IndexManifest,
   IndexWriter,
+  KeywordIndex,
   VectorRecord,
   VectorStore,
 } from "../core/index.js";
@@ -23,6 +24,8 @@ export interface IndexDeps {
   readonly vectorStore: VectorStore;
   /** Receives every chunk, parents included. Starts empty. */
   readonly chunkStore: ChunkStore;
+  /** Receives the searchable chunks, for keyword search. Starts empty. Absent: no keyword index. */
+  readonly keywordIndex?: KeywordIndex;
   readonly writer: IndexWriter;
   readonly logger: Logger;
   readonly now?: () => Date;
@@ -73,7 +76,8 @@ export async function buildIndex(
   settings: IndexSettings,
   options: IndexOptions = {},
 ): Promise<IndexResult> {
-  const { documents, chunker, embedder, vectorStore, chunkStore, writer, logger } = deps;
+  const { documents, chunker, embedder, vectorStore, chunkStore, keywordIndex, writer, logger } =
+    deps;
   const now = deps.now ?? (() => new Date());
   const log = logger.child({ namespace: settings.namespace });
 
@@ -108,7 +112,11 @@ export async function buildIndex(
   const location = writer.locationOf(settings.namespace);
   if (options.force !== true) {
     const earlier = await writer.readManifest(settings.namespace);
-    if (earlier?.fingerprint === fingerprint) {
+    // an index saved before the keyword index existed is not up to date for a build that makes one
+    const keywordMissing =
+      keywordIndex !== undefined &&
+      (await writer.readKeywordIndex(settings.namespace)) === undefined;
+    if (earlier?.fingerprint === fingerprint && !keywordMissing) {
       log.info("up to date, skipping (use --force to build again)", { location });
       return { status: "skipped", location, manifest: earlier };
     }
@@ -178,8 +186,15 @@ export async function buildIndex(
     async () => {
       await vectorStore.upsert(vectors);
       await chunkStore.put(allChunks);
+      keywordIndex?.add(children);
       const storedVectors = await vectorStore.count();
       const storedChunks = await chunkStore.count();
+      if (keywordIndex !== undefined && keywordIndex.count() !== children.length) {
+        throw new RagError(
+          "INTERNAL",
+          `The keyword index holds ${keywordIndex.count().toString()} chunks, expected ${children.length.toString()}`,
+        );
+      }
       if (storedVectors !== vectors.length || storedChunks !== allChunks.length) {
         throw new RagError(
           "INTERNAL",
@@ -218,7 +233,12 @@ export async function buildIndex(
   };
 
   const writeStarted = performance.now();
-  const written = await writer.write({ manifest, vectors, chunks: allChunks });
+  const written = await writer.write({
+    manifest,
+    vectors,
+    chunks: allChunks,
+    ...(keywordIndex === undefined ? {} : { keywordIndex: keywordIndex.serialize() }),
+  });
   log.info("indexed", {
     location: written,
     vectors: vectors.length,

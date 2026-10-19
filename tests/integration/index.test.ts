@@ -6,6 +6,7 @@ import { FileDocumentStore } from "../../src/adapters/index.js";
 import { buildIndexer, describeIndex } from "../../src/composition/index.js";
 import { makeDocument } from "../../src/testing/make-document.testing.js";
 import { noopLogger } from "../../src/shared/index.js";
+import { Bm25Index } from "../../src/strategies/index.js";
 
 const DIMENSIONS = 384;
 
@@ -71,6 +72,7 @@ describe("pnpm index, end to end with a fake Ollama", () => {
     expect(first.location).toBe(folder);
     expect((await readdir(folder)).sort()).toEqual([
       "chunks.jsonl",
+      "keyword.json",
       "manifest.json",
       "vectors.bin",
     ]);
@@ -91,6 +93,11 @@ describe("pnpm index, end to end with a fake Ollama", () => {
     expect(manifest.counts.vectors).toBeGreaterThan(1);
     const bytes = (await readFile(path.join(folder, "vectors.bin"))).length;
     expect(bytes).toBe(manifest.counts.vectors * DIMENSIONS * 4);
+    // the keyword index sits in the same folder and covers the same searchable chunks
+    const keyword = Bm25Index.deserialize(
+      await readFile(path.join(folder, "keyword.json"), "utf8"),
+    );
+    expect(keyword.count()).toBe(manifest.counts.vectors);
 
     const requests = fetchFn.inputs.length;
     const second = await (

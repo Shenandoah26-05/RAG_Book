@@ -9,6 +9,8 @@ export interface IndexContents {
   readonly vectors: readonly VectorRecord[];
   /** Every chunk, in order. Chunks without a vector in `vectors` are stored but not searched. */
   readonly chunks: readonly Chunk[];
+  /** The keyword index (`KeywordIndex.serialize()`), saved in the same folder. Absent: none. */
+  readonly keywordIndex?: string;
 }
 
 /**
@@ -21,9 +23,13 @@ export interface IndexContents {
  *    damaged or from another version of the format.
  * 3. A namespace is a plain folder-style name; anything that could leave the index folder is
  *    INVALID_ARGUMENT.
+ * 4. A keyword index is saved with the rest, so it is complete or absent together with them.
+ *    `readKeywordIndex` returns its text, or undefined if this index has none.
  */
 export interface IndexWriter {
   readManifest(namespace: string): Promise<IndexManifest | undefined>;
+  /** The saved keyword index of this namespace, or undefined if there is none. */
+  readKeywordIndex(namespace: string): Promise<string | undefined>;
   /** Saves the index. Returns where it went. */
   write(contents: IndexContents): Promise<string>;
   /** Where the index of this namespace is, or would be. For messages. */

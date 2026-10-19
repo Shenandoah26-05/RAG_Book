@@ -1,6 +1,7 @@
 export * from "./cleaning/index.js";
 export * from "./chunking/index.js";
 export * from "./in-memory-index/index.js";
+export * from "./keyword/index.js";
 export * from "./retrieval/index.js";
 export * from "./ranking/index.js";
 export * from "./reranking/index.js";

@@ -8,6 +8,7 @@ import { RagError } from "../../shared/index.js";
 const MANIFEST_FILE = "manifest.json";
 const CHUNKS_FILE = "chunks.jsonl";
 const VECTORS_FILE = "vectors.bin";
+const KEYWORD_FILE = "keyword.json";
 
 /** A namespace becomes a folder name: letters, digits, `.`, `_` and `-`, never starting with a dot. */
 const NAMESPACE = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
@@ -43,6 +44,7 @@ const manifestSchema = z.strictObject({
  *
  * - `manifest.json`: what built it (see `IndexManifest`), indented to be read by people.
  * - `chunks.jsonl`: one line per chunk, `{"indexed": boolean, "chunk": {...}}`, in order.
+ * - `keyword.json`: the keyword index (BM25), when there is one; its format is its own.
  * - `vectors.bin`: raw little-endian float32, `dimensions` numbers per vector, one vector for each
  *   line whose `indexed` is true, in the same order. No ids are stored: the line says which chunk.
  *
@@ -93,6 +95,16 @@ export class FileIndexWriter implements IndexWriter {
     return parsed.data as unknown as IndexManifest;
   }
 
+  async readKeywordIndex(namespace: string): Promise<string | undefined> {
+    const file = path.join(this.locationOf(namespace), KEYWORD_FILE);
+    try {
+      return await readFile(file, "utf8");
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+      throw new RagError("INGESTION_FAILED", `Cannot read ${file}`, { cause: error });
+    }
+  }
+
   async write(contents: IndexContents): Promise<string> {
     const { manifest, vectors, chunks } = contents;
     const target = this.locationOf(manifest.namespace);
@@ -132,6 +144,9 @@ export class FileIndexWriter implements IndexWriter {
         path.join(temporary, VECTORS_FILE),
         new Uint8Array(floats.buffer, floats.byteOffset, floats.byteLength),
       );
+      if (contents.keywordIndex !== undefined) {
+        await writeFile(path.join(temporary, KEYWORD_FILE), contents.keywordIndex);
+      }
       // the manifest goes last: its presence means the rest is there
       await writeFile(
         path.join(temporary, MANIFEST_FILE),
