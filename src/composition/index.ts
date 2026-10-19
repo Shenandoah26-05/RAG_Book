@@ -45,10 +45,6 @@ export { buildLlmProvider, llmProviderNames } from "./build-llm-provider.js";
 export type { BuildLlmProviderOptions } from "./build-llm-provider.js";
 export { buildPipeline, DEFAULT_PROMPTS_DIR, PROMPT_FILE } from "./build-pipeline.js";
 export type { BuildPipelineOptions } from "./build-pipeline.js";
-export { buildRetriever, fusionNames, retrieverNames } from "./build-retriever.js";
-export type { RetrieverContext } from "./build-retriever.js";
-export { loadIndex } from "./load-index.js";
-export type { LoadedIndex } from "./load-index.js";
 export { buildSearcher } from "./build-searcher.js";
 export type {
   BuildSearcherOptions,

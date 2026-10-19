@@ -11,7 +11,7 @@ import {
   purr,
   writeFixtureIndex,
   young,
-} from "../testing/search-fixture.testing.js";
+} from "./search-fixture.testing.js";
 import { loadIndex } from "./load-index.js";
 
 describe("loadIndex", () => {

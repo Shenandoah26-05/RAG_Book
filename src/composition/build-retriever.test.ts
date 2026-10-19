@@ -14,7 +14,7 @@ import {
   purr,
   writeFixtureIndex,
   young,
-} from "../testing/search-fixture.testing.js";
+} from "./search-fixture.testing.js";
 import {
   buildRetriever,
   fusionNames,
@@ -120,7 +120,7 @@ describe("buildRetriever", () => {
     const index = await load();
     const retriever = buildRetriever({
       retrieval: { ...DEFAULT_CONFIG.retrieval, strategy: "dense" },
-      rerank: { enabled: true, strategy: "noop", candidates: 4 },
+      rerank: { enabled: true, strategy: "noop", candidates: 4, concurrency: 4 },
       index,
       embedder,
     });

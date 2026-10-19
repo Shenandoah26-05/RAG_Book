@@ -196,6 +196,12 @@ describe("buildPipeline", () => {
     expect(stages["rerank"]).toMatchObject({ reranker: "noop", candidates: 4, kept: 1 });
   });
 
+  it("builds the llm reranker from the answering model when rerank.strategy is llm", async () => {
+    const options = await setup(contents(), ["--rerank.enabled=true"]);
+    const pipeline = await buildPipeline(options);
+    expect(pipeline.describe().reranker).toBe("llm");
+  });
+
   it("fetches only k when reranking is off", async () => {
     const answer = await (await buildPipeline(await setup(contents()))).ask(QUESTION, { k: 2 });
     const retrieve = answer.trace.stages.find((s) => s.stage === "retrieve");
@@ -215,10 +221,10 @@ describe("buildPipeline: problems are reported where they can be fixed", () => {
   it.each([
     ["--retrieval.strategy=nope", "Unknown retriever", "dense"],
     ["--retrieval.fusion=nope", "Unknown fusion", "rrf"],
-    ["--rerank.enabled=true", "Unknown reranker", "noop"],
+    ["--rerank.enabled=true --rerank.strategy=nope", "Unknown reranker", "noop"],
     ["--generation.ordering=nope", "Unknown ordering", "sandwich"],
   ])("rejects %s as CONFIG_INVALID and lists what exists", async (flag, message, known) => {
-    const options = await setup(contents(), [flag]);
+    const options = await setup(contents(), flag.split(" "));
     const error = await buildPipeline(options).catch((e: unknown) => e);
     expect(error).toMatchObject({ code: "CONFIG_INVALID" });
     expect((error as Error).message).toContain(message);

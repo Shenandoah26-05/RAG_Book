@@ -11,8 +11,12 @@ import type {
   Retriever,
 } from "../core/index.js";
 import { RagError } from "../shared/index.js";
-import { LlmReranker, NoopReranker, RerankingRetriever } from "../strategies/index.js";
-import { NoopReranker, RerankingRetriever, ScoringReranker } from "../strategies/index.js";
+import {
+  LlmReranker,
+  NoopReranker,
+  RerankingRetriever,
+  ScoringReranker,
+} from "../strategies/index.js";
 import { makeCandidates } from "../testing/reranker-contract.testing.js";
 import {
   buildReranker,
@@ -35,9 +39,7 @@ class Recording implements Retriever {
 
 describe("buildReranker", () => {
   it("knows the noop reranker by its config name", () => {
-    expect(rerankerNames()).toEqual(["noop", "llm"]);
-  it("knows the noop and cross-encoder rerankers by their config names", () => {
-    expect(rerankerNames()).toEqual(["noop", "cross-encoder"]);
+    expect(rerankerNames()).toEqual(["noop", "llm", "cross-encoder"]);
   });
 
   it("builds the cross-encoder reranker without loading its model", () => {
@@ -62,7 +64,7 @@ describe("buildReranker", () => {
   it("says which rerankers exist when the strategy is unknown", () => {
     const error = (() => {
       try {
-        buildReranker({ ...on, strategy: "cross-encoder" });
+        buildReranker({ ...on, strategy: "does-not-exist" });
       } catch (e) {
         return e;
       }
@@ -71,9 +73,9 @@ describe("buildReranker", () => {
     expect(error).toBeInstanceOf(RagError);
     expect((error as RagError).code).toBe("CONFIG_INVALID");
     expect((error as RagError).message).toContain(
-      'Unknown reranker "cross-encoder" in rerank.strategy',
+      'Unknown reranker "does-not-exist" in rerank.strategy',
     );
-    expect((error as RagError).message).toContain("noop, llm");
+    expect((error as RagError).message).toContain("noop, llm, cross-encoder");
   });
 });
 
@@ -144,7 +146,9 @@ function fakeOllama(scores: Record<string, number>): typeof fetch & { bodies: un
     const body = JSON.parse(init?.body as string) as { messages: { content: string }[] };
     bodies.push(body);
     const prompt = body.messages[0]?.content ?? "";
-    const hit = Object.entries(scores).find(([text]) => prompt.includes(`\n${text}\n`));
+    // the passage sits between the triple quotes; the prompt file may have LF or CRLF line ends
+    const passage = /"""\r?\n([\s\S]*?)\r?\n"""/.exec(prompt)?.[1];
+    const hit = Object.entries(scores).find(([text]) => text === passage);
     const lines = [
       { message: { content: JSON.stringify({ score: hit?.[1] ?? 0 }) } },
       { done: true, done_reason: "stop" },
