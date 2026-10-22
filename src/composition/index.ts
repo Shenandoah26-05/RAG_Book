@@ -87,3 +87,6 @@ export type {
   ExperimentPlan,
 } from "./build-experiment.js";
 export { describePlan, describeSummary } from "./experiment-summary.js";
+export { runSmoke, SMOKE_BASELINE_FILE, SMOKE_EXPERIMENT_FILE } from "./build-smoke.js";
+export type { SmokeOptions, SmokeOutcome } from "./build-smoke.js";
+export { describeRegression } from "../eval/index.js";
