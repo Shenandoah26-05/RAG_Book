@@ -1,5 +1,6 @@
 import type { RagConfig } from "../config/index.js";
 import type { RagPipeline } from "../pipeline/index.js";
+import { ConversationHistory } from "../strategies/index.js";
 import { CHAT_HELP, describeChatConfig, describeSources, describeTrace } from "./chat-format.js";
 
 /** Where a session writes. The terminal wires these to standard output and standard error. */
@@ -35,15 +36,20 @@ export interface ChatSessionOptions {
  * - A question streams its answer as it is written, then prints the sources with page numbers.
  * - A failed question (the model is down, nothing is indexed) prints its message to `error` and the
  *   session carries on; the next question may well work.
- * - Each question stands alone. Follow-up questions and memory are RAG-074.
+ * - The session remembers the last `queryTransform.historyTurns` questions and answers and hands
+ *   them to the pipeline with each question, so "what about chapter 4?" can be understood. Only a
+ *   turn that was answered to the end is remembered: a failed or stopped one would put half an
+ *   answer in the memory. `/clear` forgets everything.
  */
 export class ChatSession {
   readonly #options: ChatSessionOptions;
+  readonly #history: ConversationHistory;
   #debug: boolean;
   #current: AbortController | undefined;
 
   constructor(options: ChatSessionOptions) {
     this.#options = options;
+    this.#history = new ConversationHistory(options.config.queryTransform.historyTurns);
     this.#debug = options.debug ?? false;
   }
 
@@ -90,6 +96,10 @@ export class ChatSession {
       case "/help":
         out.write(`${CHAT_HELP}\n`);
         break;
+      case "/clear":
+        this.#history.clear();
+        out.write("Conversation cleared: the next question stands alone.\n");
+        break;
       case "/debug":
         this.#debug = !this.#debug;
         out.write(
@@ -117,6 +127,7 @@ export class ChatSession {
     try {
       answer = await this.#options.pipeline.ask(question, {
         signal: controller.signal,
+        history: this.#history.turns(),
         ...(this.#options.k === undefined ? {} : { k: this.#options.k }),
       });
       for await (const delta of answer.stream) {
@@ -124,6 +135,10 @@ export class ChatSession {
           reply += delta.text;
           out.write(delta.text);
         }
+      }
+      // reached only when the stream ended: a stop or a failure throws out of the loop above
+      if (!controller.signal.aborted && reply.trim() !== "") {
+        this.#history.add({ question, answer: reply });
       }
       out.write(`\n\n${describeSources(answer.prompt, reply)}\n`);
     } catch (error) {

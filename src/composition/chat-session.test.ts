@@ -184,6 +184,73 @@ describe("ChatSession: stopping an answer", () => {
   });
 });
 
+describe("ChatSession: conversation memory", () => {
+  it("sends the earlier turns with each question, oldest first", async () => {
+    const { pipeline, asked } = scripted(
+      { pieces: ["A one."] },
+      { pieces: ["A two."] },
+      {
+        pieces: ["A three."],
+      },
+    );
+    const chat = session(pipeline);
+    for (const line of ["Q one", "Q two", "Q three"]) await chat.handle(line, recordingOutput());
+
+    expect(asked.map((a) => a.options.history)).toEqual([
+      [],
+      [{ question: "Q one", answer: "A one." }],
+      [
+        { question: "Q one", answer: "A one." },
+        { question: "Q two", answer: "A two." },
+      ],
+    ]);
+  });
+
+  it("remembers only the last queryTransform.historyTurns turns", async () => {
+    const { pipeline, asked } = scripted(
+      { pieces: ["a1"] },
+      { pieces: ["a2"] },
+      { pieces: ["a3"] },
+    );
+    const config = {
+      ...DEFAULT_CONFIG,
+      queryTransform: { ...DEFAULT_CONFIG.queryTransform, historyTurns: 1 },
+    };
+    const chat = session(pipeline, { config });
+    for (const line of ["q1", "q2", "q3"]) await chat.handle(line, recordingOutput());
+    expect(asked[2]?.options.history).toEqual([{ question: "q2", answer: "a2" }]);
+  });
+
+  it("does not remember a question that failed or was stopped", async () => {
+    const { pipeline, asked } = scripted(
+      new Error("model down"),
+      { pieces: ["partial"], failWith: new Error("dropped") },
+      { pieces: ["fine"] },
+      { pieces: ["next"] },
+    );
+    const chat = session(pipeline);
+    for (const line of ["q1", "q2", "q3", "q4"]) await chat.handle(line, recordingOutput());
+    expect(asked[3]?.options.history).toEqual([{ question: "q3", answer: "fine" }]);
+  });
+
+  it("/clear forgets the conversation", async () => {
+    const { pipeline, asked } = scripted({ pieces: ["a1"] }, { pieces: ["a2"] });
+    const chat = session(pipeline);
+    await chat.handle("q1", recordingOutput());
+    const out = recordingOutput();
+    expect(await chat.handle("/clear", out)).toBe("continue");
+    expect(out.text()).toContain("cleared");
+    await chat.handle("q2", recordingOutput());
+    expect(asked[1]?.options.history).toEqual([]);
+  });
+
+  it("/help lists /clear", async () => {
+    const out = recordingOutput();
+    await session(scripted().pipeline).handle("/help", out);
+    expect(out.text()).toContain("/clear");
+  });
+});
+
 describe("ChatSession: commands", () => {
   it("/quit and /exit end the session, in any case", async () => {
     const chat = session(scripted().pipeline);

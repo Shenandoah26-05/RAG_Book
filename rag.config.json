@@ -8,6 +8,13 @@
   "vectorStore": { "type": "in-memory", "dir": "data/index" },
   "retrieval": { "strategy": "hybrid", "k": 5, "fusion": "rrf" },
   "rerank": { "enabled": false, "strategy": "llm", "candidates": 20, "concurrency": 4 },
+  "queryTransform": {
+    "rewrite": true,
+    "historyTurns": 4,
+    "hyde": false,
+    "multiQuery": false,
+    "multiQueryCount": 3
+  },
   "generation": {
     "provider": "ollama",
     "model": "llama3.2",

@@ -11,3 +11,5 @@ export { DEFAULT_HYBRID_DEPTH, HybridRetriever } from "./hybrid-retriever.js";
 export type { HybridRetrieverOptions } from "./hybrid-retriever.js";
 export { DEFAULT_RRF_K, RrfFusion } from "./rrf-fusion.js";
 export { WeightedFusion } from "./weighted-fusion.js";
+export { DEFAULT_MULTI_QUERY_DEPTH, MultiQueryRetriever } from "./multi-query-retriever.js";
+export type { MultiQueryRetrieverOptions } from "./multi-query-retriever.js";

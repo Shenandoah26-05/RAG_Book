@@ -4,6 +4,7 @@ import type {
   ChatMessage,
   Citation,
   ContextAssembler,
+  ConversationTurn,
   LlmProvider,
   MetadataFilter,
   QueryTransformer,
@@ -36,6 +37,11 @@ export interface AskOptions {
   readonly k?: number;
   /** Only chunks that satisfy every clause may be used. */
   readonly filter?: MetadataFilter;
+  /**
+   * What was said before this question, oldest first. The transformer uses it to make a follow-up
+   * stand alone. Without it every question stands alone.
+   */
+  readonly history?: readonly ConversationTurn[];
   /** Aborting stops the question: before the next stage, or in the middle of the answer. */
   readonly signal?: AbortSignal;
 }
@@ -101,7 +107,7 @@ export class RagPipeline {
   async ask(question: string, options: AskOptions = {}): Promise<RagAnswer> {
     const { transformer, retriever, reranker, assembler, llm } = this.#deps;
     const k = options.k ?? this.#deps.k;
-    const { filter, signal } = options;
+    const { filter, signal, history } = options;
     assertCount("k", k, 1);
     if (question.trim() === "") {
       throw new RagError("INVALID_ARGUMENT", "The question is blank");
@@ -119,8 +125,17 @@ export class RagPipeline {
 
     const query = await step(
       "transform",
-      () => transformer.transform({ text: question }),
-      (q) => ({ transformer: transformer.name, changed: q.text !== question }),
+      () =>
+        transformer.transform(
+          { text: question, ...(history === undefined || history.length === 0 ? {} : { history }) },
+          signal === undefined ? {} : { signal },
+        ),
+      (q) => ({
+        transformer: transformer.name,
+        changed: q.text !== question,
+        history: history?.length ?? 0,
+        variants: q.variants?.length ?? 0,
+      }),
     );
 
     const candidates = await step(

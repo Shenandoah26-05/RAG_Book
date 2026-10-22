@@ -7,10 +7,12 @@ const SNIPPET_CHARS = 90;
 /** What `/help` prints. */
 export const CHAT_HELP = [
   "Ask a question about the book and press Enter. The answer appears as it is written, followed by",
-  "the sources it was given, with page numbers.",
+  "the sources it was given, with page numbers. Follow-up questions work: the chat remembers the",
+  "last few turns.",
   "",
   "Commands:",
-  "  /debug    show or hide what each stage did (timings, retrieval, dropped sources)",
+  "  /clear    forget the conversation, so the next question stands alone",
+  "  /debug   show or hide what each stage did (timings, retrieval, dropped sources)",
   "  /config   show the active variant and settings",
   "  /help     show this text",
   "  /quit     leave (also /exit, or Ctrl+D)",

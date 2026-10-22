@@ -8,7 +8,6 @@ import { indexNamespace, RagPipeline } from "../pipeline/index.js";
 import { createConsoleLogger, RagError } from "../shared/index.js";
 import type { Logger } from "../shared/index.js";
 import {
-  IdentityQueryTransformer,
   isOrderingName,
   ORDERING_NAMES,
   parsePromptTemplate,
@@ -17,6 +16,7 @@ import {
 import { buildChunkerRegistry } from "./build-chunkers.js";
 import { buildEmbedder, DEFAULT_EMBEDDING_CACHE_DIR } from "./build-embedder.js";
 import { buildLlmProvider } from "./build-llm-provider.js";
+import { buildQueryTransformer, withVariantSearch } from "./build-query-transformer.js";
 import { resolveRerank } from "./build-reranker.js";
 import { buildRetriever } from "./build-retriever.js";
 import { buildChunker } from "./chunker-registry.js";
@@ -128,7 +128,10 @@ export async function buildPipelineWithConfig(
   const index = await loadIndex(reader, namespace, logger, config.vectorStore);
 
   // no `rerank` here: the pipeline has a rerank stage of its own
-  const retriever = buildRetriever({ retrieval: config.retrieval, index, embedder });
+  const retriever = withVariantSearch(
+    buildRetriever({ retrieval: config.retrieval, index, embedder }),
+    config.queryTransform,
+  );
   const rerank = resolveRerank(config.rerank, {
     // the "llm" reranker judges with the answering model, unless a model is given
     ...(options.llm === undefined ? { generation: config.generation } : { llm: options.llm }),
@@ -159,7 +162,8 @@ export async function buildPipelineWithConfig(
     });
 
   const pipeline = new RagPipeline({
-    transformer: new IdentityQueryTransformer(),
+    // rewriting and HyDE use the answering model, like the "llm" reranker
+    transformer: await buildQueryTransformer(config.queryTransform, { llm, promptsDir }),
     retriever,
     reranker: rerank.reranker,
     rerankCandidates: rerank.candidates,

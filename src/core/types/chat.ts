@@ -1,8 +1,26 @@
 import type { ChunkId, DocId } from "./ids.js";
 
+/** One question the reader asked and the answer they were given, kept as conversation memory. */
+export interface ConversationTurn {
+  readonly question: string;
+  readonly answer: string;
+}
+
 /** A user question as it enters retrieval. Query transforms produce new `Query` values. */
 export interface Query {
   readonly text: string;
+  /**
+   * What was said before this question, oldest first. Only a transformer reads it (to turn a
+   * follow-up like "what about chapter 4?" into a standalone question); retrieval ignores it.
+   */
+  readonly history?: readonly ConversationTurn[];
+  /**
+   * Other texts to search for besides `text`: other phrasings of the question, or a made-up passage
+   * that would answer it (HyDE). A plain retriever ignores them; the multi-query retriever
+   * searches for `text` and for each of them and fuses the rankings. `text` stays the question
+   * that is put to the answering model.
+   */
+  readonly variants?: readonly string[];
 }
 
 /** Points an answer back to the passage it came from. */

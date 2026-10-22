@@ -12,6 +12,7 @@ export type {
   ChatOptions,
   ChatRole,
   Citation,
+  ConversationTurn,
   FinishReason,
   Query,
 } from "./chat.js";

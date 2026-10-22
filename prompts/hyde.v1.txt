@@ -1,0 +1,8 @@
+Write a short passage of two or three sentences, in the style of a book, that answers the question below.
+It does not need to be correct. It only needs to sound like the book's own text and use the words the book would use.
+Reply with only the passage.
+
+Question:
+{{question}}
+
+Passage:

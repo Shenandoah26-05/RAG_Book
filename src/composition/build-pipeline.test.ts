@@ -9,6 +9,11 @@ import { indexNamespace, readAnswer } from "../pipeline/index.js";
 import { makeDocId } from "../shared/index.js";
 import { Bm25Index } from "../strategies/index.js";
 import { buildPipeline, buildPipelineWithConfig, PROMPT_FILE } from "./build-pipeline.js";
+import {
+  HYDE_PROMPT_FILE,
+  MULTI_QUERY_PROMPT_FILE,
+  REWRITE_PROMPT_FILE,
+} from "./build-query-transformer.js";
 import type { BuildPipelineOptions } from "./build-pipeline.js";
 
 const DOC = makeDocId("d".repeat(64));
@@ -117,6 +122,13 @@ beforeAll(async () => {
     path.join(promptsDir, PROMPT_FILE),
     await readFile(path.resolve("prompts", PROMPT_FILE), "utf8"),
   );
+  // the query-transform prompts, which the default configuration (rewrite on) reads
+  for (const file of [REWRITE_PROMPT_FILE, HYDE_PROMPT_FILE, MULTI_QUERY_PROMPT_FILE]) {
+    await writeFile(
+      path.join(promptsDir, file),
+      await readFile(path.resolve("prompts", file), "utf8"),
+    );
+  }
 });
 afterAll(async () => {
   await rm(workdir, { recursive: true, force: true });
@@ -137,7 +149,7 @@ describe("buildPipeline", () => {
   it("builds a pipeline from the default configuration and answers from the saved index", async () => {
     const pipeline = await buildPipeline(await setup(contents()));
     expect(pipeline.describe()).toEqual({
-      transformer: "identity",
+      transformer: "rewrite",
       retriever: "hybrid",
       reranker: "noop",
       llm: "fake:llm",
