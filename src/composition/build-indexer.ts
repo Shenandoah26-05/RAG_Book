@@ -71,7 +71,7 @@ export async function buildIndexer(options: BuildIndexerOptions = {}): Promise<I
         runOptions.embedder ?? `${config.embedding.provider}:${config.embedding.model}`;
       // built first, so a wrong name is reported before any file is read
       const chunker = buildChunker({ ...config.chunking, strategy }, registry);
-      const embedder = buildEmbedder(embedderSpec, {
+      const embedder = await buildEmbedder(embedderSpec, {
         batchSize: config.embedding.batchSize,
         env,
         cacheDir,

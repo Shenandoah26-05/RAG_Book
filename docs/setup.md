@@ -35,6 +35,13 @@ ollama pull all-minilm
 ollama pull llama3.2
 ```
 
+Only for the embedding comparison (`pnpm experiment evals/experiments/embedders.json`, RAG-090):
+
+```sh
+ollama pull nomic-embed-text
+ollama pull mxbai-embed-large
+```
+
 Check what is installed with `ollama list`.
 
 ## 4. Point the project at Ollama (optional)

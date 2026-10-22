@@ -123,7 +123,7 @@ export async function buildSearcher(options: BuildSearcherOptions = {}): Promise
       );
 
       const embedder = usesEmbedder(config.retrieval.strategy)
-        ? buildEmbedder(index.manifest.embedder.modelId, {
+        ? await buildEmbedder(index.manifest.embedder.modelId, {
             batchSize: index.manifest.embedder.batchSize,
             env,
             cacheDir,

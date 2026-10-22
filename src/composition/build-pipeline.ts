@@ -112,13 +112,13 @@ export async function buildPipelineWithConfig(
   });
   const embedder =
     options.embedder ??
-    buildEmbedder(`${config.embedding.provider}:${config.embedding.model}`, {
+    (await buildEmbedder(`${config.embedding.provider}:${config.embedding.model}`, {
       batchSize: config.embedding.batchSize,
       env,
       cacheDir,
       logger,
       ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
-    });
+    }));
   const tokenizer = buildTokenizer(config.chunking.tokenizer);
 
   // the index of this chunker and this embedder, found the way the indexer named it
