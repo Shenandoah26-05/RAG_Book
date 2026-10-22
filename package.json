@@ -24,6 +24,7 @@
     "bench:similarity": "tsx scripts/bench-similarity.ts",
     "experiment": "tsx src/cli/experiment.ts",
     "eval:validate": "tsx scripts/validate-eval-dataset.ts",
+    "eval:smoke": "tsx src/cli/eval-smoke.ts",
     "bench:rerank": "tsx scripts/bench-rerankers.ts",
     "bench:hnsw": "tsx scripts/bench-hnsw.ts",
     "deps:check": "depcruise src --config .dependency-cruiser.mjs",
