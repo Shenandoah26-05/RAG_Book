@@ -8,3 +8,11 @@ export type { IndexDeps, IndexOptions, IndexResult, IndexSettings } from "./buil
 export { indexNamespace } from "./index-namespace.js";
 export { RagPipeline, readAnswer, STAGES } from "./rag-pipeline.js";
 export type { AskOptions, RagAnswer, RagPipelineDeps } from "./rag-pipeline.js";
+export type { AnswerPipeline } from "./answer-pipeline.js";
+export { citedNumbers, GroundedPipeline, NOT_FOUND_MESSAGE } from "./grounded-pipeline.js";
+export type {
+  GroundedAnswer,
+  GroundedPipelineDeps,
+  GroundingReport,
+  RefusalReason,
+} from "./grounded-pipeline.js";

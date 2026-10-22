@@ -39,6 +39,7 @@ class Recording implements Retriever {
 
 describe("buildReranker", () => {
   it("knows the noop reranker by its config name", () => {
+  it("knows the noop, llm and cross-encoder rerankers by their config names", () => {
     expect(rerankerNames()).toEqual(["noop", "llm", "cross-encoder"]);
   });
 

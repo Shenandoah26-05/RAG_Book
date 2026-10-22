@@ -251,6 +251,8 @@ describe("hashConfig", () => {
 
   it("does not depend on key order", () => {
     const reordered = {
+      grounding: DEFAULT_CONFIG.grounding,
+      judge: DEFAULT_CONFIG.judge,
       generation: DEFAULT_CONFIG.generation,
       queryTransform: DEFAULT_CONFIG.queryTransform,
       rerank: DEFAULT_CONFIG.rerank,

@@ -1,4 +1,5 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm } from "node:fs/promises";
+import { DatabaseSync } from "node:sqlite";
 import os from "node:os";
 import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
@@ -159,5 +160,70 @@ describe("SqliteVectorStore: a file on disk", () => {
     const file = await tempFile();
     new SqliteVectorStore(2, file).close();
     expect(() => new SqliteVectorStore(3, file)).toThrow(/2-dimension/);
+  });
+});
+
+describe("SqliteVectorStore: section filters", () => {
+  const inSection = (id: string, sectionPath: string[], ...values: number[]): VectorRecord => ({
+    ...record(id, ...values),
+    metadata: { ...meta, sectionPath },
+  });
+
+  it("matches a chapter and a section by path prefix, ignoring case and spaces", async () => {
+    const store = new SqliteVectorStore(2);
+    await store.upsert([
+      inSection("a", ["Chapter 3", "3.1 Intro"], 1, 0),
+      inSection("b", [" CHAPTER 3 ", "3.2 Embeddings"], 0.9, 0.1),
+      inSection("c", ["Chapter 33"], 0.8, 0.2),
+      inSection("d", [], 0.7, 0.3),
+    ]);
+    const ids = async (path: string[]) =>
+      (await store.search(Float32Array.from([1, 0]), 10, [{ kind: "section", path }]))
+        .map((hit) => hit.id)
+        .sort();
+    expect(await ids(["chapter 3"])).toEqual(["a", "b"]);
+    expect(await ids(["Chapter 3", "3.2 embeddings"])).toEqual(["b"]);
+    expect(await ids(["Chapter 4"])).toEqual([]);
+    store.close();
+  });
+
+  it("rejects an empty or blank section path as INVALID_ARGUMENT", async () => {
+    const store = new SqliteVectorStore(2);
+    for (const path of [[], ["Chapter 1", "  "]]) {
+      expect(
+        await codeOf(store.search(Float32Array.from([1, 0]), 1, [{ kind: "section", path }])),
+      ).toBe("INVALID_ARGUMENT");
+    }
+    store.close();
+  });
+
+  it("opens a file made before section filters existed, keeping its records", async () => {
+    const file = await tempFile();
+    await mkdir(path.dirname(file), { recursive: true });
+    // the table as RAG-045 created it, without the section_path column
+    const old = new DatabaseSync(file);
+    old.exec(`
+      CREATE TABLE store_info (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+      INSERT INTO store_info VALUES ('dimensions', '2');
+      CREATE TABLE records (
+        id TEXT PRIMARY KEY, vector BLOB NOT NULL, doc_id TEXT NOT NULL, strategy TEXT NOT NULL,
+        page_start INTEGER NOT NULL, page_end INTEGER NOT NULL
+      );
+    `);
+    old
+      .prepare("INSERT INTO records VALUES (?, ?, ?, ?, ?, ?)")
+      .run("old", new Uint8Array(Float32Array.from([1, 0]).buffer), "doc", "recursive", 1, 1);
+    old.close();
+
+    const store = new SqliteVectorStore(2, file);
+    await store.upsert([inSection("new", ["Chapter 1"], 0.5, 0.5)]);
+    expect(await store.count()).toBe(2);
+    const section = [{ kind: "section", path: ["Chapter 1"] }] as const;
+    // the old row has no section, the new one does
+    expect((await store.search(Float32Array.from([1, 0]), 5, section)).map((h) => h.id)).toEqual([
+      "new",
+    ]);
+    expect((await store.search(Float32Array.from([1, 0]), 5)).map((h) => h.id)).toContain("old");
+    store.close();
   });
 });

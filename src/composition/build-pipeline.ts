@@ -4,7 +4,7 @@ import { FileIndexReader } from "../adapters/index.js";
 import { loadConfig } from "../config/index.js";
 import type { Env, RagConfig } from "../config/index.js";
 import type { Embedder, LlmProvider, PromptTemplate } from "../core/index.js";
-import { indexNamespace, RagPipeline } from "../pipeline/index.js";
+import { GroundedPipeline, indexNamespace, RagPipeline } from "../pipeline/index.js";
 import { createConsoleLogger, RagError } from "../shared/index.js";
 import type { Logger } from "../shared/index.js";
 import {
@@ -25,7 +25,7 @@ import { buildTokenizer } from "./registries.js";
 import { argvWithVariant } from "./variants.js";
 
 /** The prompt the pipeline answers with. A new wording is a new file and a change here. */
-export const PROMPT_FILE = "rag-system.v1.txt";
+export const PROMPT_FILE = "rag-system.v2.txt";
 /** Where prompt files are read from unless told otherwise. */
 export const DEFAULT_PROMPTS_DIR = "prompts";
 
@@ -98,6 +98,7 @@ export interface BuiltPipeline {
 export async function buildPipelineWithConfig(
   options: BuildPipelineOptions = {},
 ): Promise<BuiltPipeline> {
+export async function buildPipeline(options: BuildPipelineOptions = {}): Promise<GroundedPipeline> {
   const {
     argv = process.argv.slice(2),
     env = process.env,
@@ -139,6 +140,16 @@ export async function buildPipelineWithConfig(
     logger,
     ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
   });
+  const retriever = buildRetriever(config.retrieval, { embedder, index });
+
+  const llm =
+    options.llm ??
+    buildLlmProvider(config.generation, {
+      env,
+      ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
+    });
+  // the "llm" reranker asks the same model that answers
+  const rerank = resolveRerank(config.rerank, { llm, logger });
 
   const { ordering } = config.generation;
   if (!isOrderingName(ordering)) {
@@ -164,6 +175,8 @@ export async function buildPipelineWithConfig(
   const pipeline = new RagPipeline({
     // rewriting and HyDE use the answering model, like the "llm" reranker
     transformer: await buildQueryTransformer(config.queryTransform, { llm, promptsDir }),
+  return new RagPipeline({
+    transformer: new IdentityQueryTransformer(),
     retriever,
     reranker: rerank.reranker,
     rerankCandidates: rerank.candidates,
@@ -172,4 +185,6 @@ export async function buildPipelineWithConfig(
     k: config.retrieval.k,
   });
   return { pipeline, config, namespace };
+  // the guardrails wrap the finished pipeline; the pipeline itself knows nothing about them
+  return new GroundedPipeline({ inner: pipeline, minScore: config.grounding.minScore });
 }
