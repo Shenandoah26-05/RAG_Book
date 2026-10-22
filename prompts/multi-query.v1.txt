@@ -1,0 +1,7 @@
+Write {{count}} different ways to ask the question below. Each should look for the same information, using different words.
+Reply with one question per line, with no numbering and no other text.
+
+Question:
+{{question}}
+
+Other ways to ask it:

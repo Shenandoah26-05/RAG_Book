@@ -1,0 +1,15 @@
+Rewrite the last question of a conversation about a book so that it can be understood without the conversation.
+
+Rules:
+- Replace pronouns and references ("it", "that", "the previous chapter") with what they refer to.
+- Keep the meaning and the language of the question. Do not answer it.
+- If the question already stands on its own, repeat it unchanged.
+- Reply with only the rewritten question, on one line.
+
+Conversation so far:
+{{history}}
+
+Last question:
+{{question}}
+
+Standalone question:

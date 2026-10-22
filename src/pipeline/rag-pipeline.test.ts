@@ -11,6 +11,7 @@ import type {
   RerankOptions,
   Reranker,
   RetrieveOptions,
+  TransformOptions,
   Retriever,
 } from "../core/index.js";
 import { RagError } from "../shared/index.js";
@@ -113,6 +114,58 @@ function build(overrides: Partial<RagPipelineDeps> = {}, spy = new Spy()) {
   return { pipeline: new RagPipeline(deps), spy, model };
 }
 
+describe("RagPipeline.ask: conversation history", () => {
+  const turns = [{ question: "What is chunking?", answer: "Splitting." }];
+
+  it("hands the history and the signal to the transformer, and retrieves with the rewrite", async () => {
+    const seen: { query: Query; options: TransformOptions | undefined }[] = [];
+    const spy = new Spy();
+    const rewriting: QueryTransformer = {
+      name: "rewrite",
+      transform: (query, options) => {
+        seen.push({ query, options });
+        return Promise.resolve({ ...query, text: "What does chapter 4 say about chunking?" });
+      },
+    };
+    const { pipeline } = build({ transformer: rewriting }, spy);
+    const controller = new AbortController();
+
+    const answer = await pipeline.ask("What about chapter 4?", {
+      history: turns,
+      signal: controller.signal,
+    });
+
+    expect(seen).toEqual([
+      {
+        query: { text: "What about chapter 4?", history: turns },
+        options: { signal: controller.signal },
+      },
+    ]);
+    expect(spy.calls).toContain("retrieve(What does chapter 4 say about chunking?)");
+    expect(answer.trace.stages.find((s) => s.stage === "transform")?.summary).toEqual({
+      transformer: "rewrite",
+      changed: true,
+      history: 1,
+      variants: 0,
+    });
+  });
+
+  it("sends no history key for a first question", async () => {
+    const seen: Query[] = [];
+    const recording: QueryTransformer = {
+      name: "t",
+      transform: (query) => {
+        seen.push(query);
+        return Promise.resolve(query);
+      },
+    };
+    const { pipeline } = build({ transformer: recording });
+    await pipeline.ask("one");
+    await pipeline.ask("two", { history: [] });
+    expect(seen).toEqual([{ text: "one" }, { text: "two" }]);
+  });
+});
+
 describe("RagPipeline.ask", () => {
   it("runs the stages in order and generates last, when the stream is read", async () => {
     const { pipeline, spy } = build();
@@ -200,7 +253,12 @@ describe("RagPipeline trace", () => {
     expect(stages.map((s) => s.stage)).toEqual([...STAGES]);
     expect(stages.every((s) => s.status === "ok")).toBe(true);
     const byName = Object.fromEntries(stages.map((s) => [s.stage, s.summary]));
-    expect(byName["transform"]).toEqual({ transformer: "fake-transform", changed: false });
+    expect(byName["transform"]).toEqual({
+      transformer: "fake-transform",
+      changed: false,
+      history: 0,
+      variants: 0,
+    });
     expect(byName["retrieve"]).toEqual({ retriever: "fake-retriever", found: 4 });
     expect(byName["rerank"]).toEqual({
       reranker: "reverse",

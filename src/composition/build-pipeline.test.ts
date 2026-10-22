@@ -8,7 +8,12 @@ import type { Chunk, Embedder, IndexContents, LlmProvider } from "../core/index.
 import { indexNamespace, NOT_FOUND_MESSAGE, readAnswer } from "../pipeline/index.js";
 import { makeDocId } from "../shared/index.js";
 import { Bm25Index } from "../strategies/index.js";
-import { buildPipeline, PROMPT_FILE } from "./build-pipeline.js";
+import { buildPipeline, buildPipelineWithConfig, PROMPT_FILE } from "./build-pipeline.js";
+import {
+  HYDE_PROMPT_FILE,
+  MULTI_QUERY_PROMPT_FILE,
+  REWRITE_PROMPT_FILE,
+} from "./build-query-transformer.js";
 import type { BuildPipelineOptions } from "./build-pipeline.js";
 
 const DOC = makeDocId("d".repeat(64));
@@ -117,6 +122,13 @@ beforeAll(async () => {
     path.join(promptsDir, PROMPT_FILE),
     await readFile(path.resolve("prompts", PROMPT_FILE), "utf8"),
   );
+  // the query-transform prompts, which the default configuration (rewrite on) reads
+  for (const file of [REWRITE_PROMPT_FILE, HYDE_PROMPT_FILE, MULTI_QUERY_PROMPT_FILE]) {
+    await writeFile(
+      path.join(promptsDir, file),
+      await readFile(path.resolve("prompts", file), "utf8"),
+    );
+  }
 });
 afterAll(async () => {
   await rm(workdir, { recursive: true, force: true });
@@ -137,7 +149,7 @@ describe("buildPipeline", () => {
   it("builds a pipeline from the default configuration and answers from the saved index", async () => {
     const pipeline = await buildPipeline(await setup(contents()));
     expect(pipeline.describe()).toEqual({
-      transformer: "identity",
+      transformer: "rewrite",
       retriever: "hybrid",
       reranker: "noop",
       llm: "fake:llm",
@@ -225,6 +237,57 @@ describe("buildPipeline", () => {
     // the default strategy is "llm": turning reranking on must be enough, with no extra setup
     const pipeline = await buildPipeline(await setup(contents(), ["--rerank.enabled=true"]));
     expect(pipeline.describe()).toMatchObject({ reranker: "llm", llm: "fake:llm" });
+  });
+
+  describe("variants and the configuration it was built from", () => {
+    const variantsDir = () => path.join(workdir, "variants");
+    beforeAll(async () => {
+      const { mkdir } = await import("node:fs/promises");
+      await mkdir(variantsDir(), { recursive: true });
+      await writeFile(
+        path.join(variantsDir(), "bm25.json"),
+        JSON.stringify({ retrieval: { strategy: "bm25", k: 2 } }),
+      );
+    });
+
+    it("uses the variant as the config file", async () => {
+      const options = { ...(await setup(contents())), variant: "bm25", variantsDir: variantsDir() };
+      const { pipeline, config, namespace } = await buildPipelineWithConfig(options);
+      expect(pipeline.describe().retriever).toBe("bm25");
+      expect(config.retrieval).toMatchObject({ strategy: "bm25", k: 2 });
+      expect(namespace).toBe(NAMESPACE);
+    });
+
+    it("lets the command line override the variant", async () => {
+      const options = {
+        ...(await setup(contents(), ["--retrieval.k=4"])),
+        variant: "bm25",
+        variantsDir: variantsDir(),
+      };
+      const { config } = await buildPipelineWithConfig(options);
+      expect(config.retrieval).toMatchObject({ strategy: "bm25", k: 4 });
+    });
+
+    it("returns the default configuration when there is no variant", async () => {
+      const { config, pipeline } = await buildPipelineWithConfig(await setup(contents()));
+      expect(config.retrieval.strategy).toBe("hybrid");
+      expect(pipeline.describe().retriever).toBe("hybrid");
+    });
+
+    it("names the variants that exist when one is not found", async () => {
+      const options = { ...(await setup(contents())), variant: "nope", variantsDir: variantsDir() };
+      await expect(buildPipeline(options)).rejects.toMatchObject({
+        code: "INVALID_ARGUMENT",
+        message: expect.stringContaining("bm25") as string,
+      });
+    });
+
+    it("buildPipeline gives the same pipeline as buildPipelineWithConfig", async () => {
+      const options = { ...(await setup(contents())), variant: "bm25", variantsDir: variantsDir() };
+      expect((await buildPipeline(options)).describe()).toEqual(
+        (await buildPipelineWithConfig(options)).pipeline.describe(),
+      );
+    });
   });
 
   it("fetches only k when reranking is off", async () => {

@@ -59,6 +59,13 @@ export const ragConfigSchema = z
       candidates: positiveInt,
       concurrency: positiveInt,
     }),
+    queryTransform: z.strictObject({
+      rewrite: flag,
+      historyTurns: positiveInt,
+      hyde: flag,
+      multiQuery: flag,
+      multiQueryCount: positiveInt,
+    }),
     generation: z.strictObject({
       provider: name,
       model: text,

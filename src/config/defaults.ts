@@ -17,6 +17,15 @@ export const DEFAULT_CONFIG: RagConfig = {
   vectorStore: { type: "in-memory", dir: "data/index" },
   retrieval: { strategy: "hybrid", k: 5, fusion: "rrf" },
   rerank: { enabled: false, strategy: "llm", candidates: 20, concurrency: 4 },
+  // rewrite: turn a follow-up into a standalone question using the last `historyTurns` turns (only
+  // when there is history). hyde and multiQuery are experiments and cost an extra model call each.
+  queryTransform: {
+    rewrite: true,
+    historyTurns: 4,
+    hyde: false,
+    multiQuery: false,
+    multiQueryCount: 3,
+  },
   generation: {
     provider: "ollama",
     model: "llama3.2",

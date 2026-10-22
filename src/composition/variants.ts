@@ -26,6 +26,20 @@ export async function listVariants(dir: string = DEFAULT_VARIANTS_DIR): Promise<
 }
 
 /**
+ * The command line to load the config with: `argv` as it is, or with the variant's file named by
+ * `--config` in front of it. Anything else on the command line still overrides the variant.
+ * @throws RagError INVALID_ARGUMENT as `resolveVariant` does
+ */
+export async function argvWithVariant(
+  argv: readonly string[],
+  variant: string | undefined,
+  dir: string = DEFAULT_VARIANTS_DIR,
+): Promise<readonly string[]> {
+  if (variant === undefined) return argv;
+  return ["--config", await resolveVariant(variant, dir), ...argv];
+}
+
+/**
  * The config file of a variant. A variant is a small config file that lists only what it changes
  * (the defaults fill in the rest). `name` is a bare name, looked up as `<dir>/<name>.json`, or a
  * path (anything with a folder or ending in `.json`), used as it is.
