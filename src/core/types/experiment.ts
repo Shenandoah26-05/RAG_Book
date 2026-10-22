@@ -49,6 +49,24 @@ export interface GenerationScores {
   readonly promptVersions: readonly string[];
 }
 
+/**
+ * What the model and embedder calls of one question came to (RAG-093), read back from its trace.
+ * Money is in the currency of the price table; a model with no price adds nothing to `cost` and its
+ * tokens are in `unpricedTokens`.
+ */
+export interface ResultUsage {
+  readonly calls: number;
+  readonly failedCalls: number;
+  readonly promptTokens: number;
+  readonly outputTokens: number;
+  /** Estimated from characters: an embedder does not say how many tokens it was sent. */
+  readonly embeddedTokens: number;
+  /** Milliseconds, summed over the calls. Calls that overlap are counted in full. */
+  readonly modelMs: number;
+  readonly cost: number;
+  readonly unpricedTokens: number;
+}
+
 /** One line of `results.jsonl`: what one variant did with one question. */
 export interface QuestionResult extends ResultProvenance {
   readonly questionId: string;
@@ -72,8 +90,39 @@ export interface QuestionResult extends ResultProvenance {
     readonly judge?: number;
   };
   readonly tokens?: { readonly prompt?: number; readonly output?: number };
+  /**
+   * Every model and embedder call made to answer the question: the answer, and also rewriting,
+   * reranking and embedding the question. Absent when no call was recorded.
+   */
+  readonly usage?: ResultUsage;
+  /** The calls of the judge, apart from `usage`: the judge is not part of what the system costs. */
+  readonly judgeUsage?: ResultUsage;
   /** Set when this question failed. The other fields describe what was done before it did. */
   readonly error?: string;
+}
+
+/** What a variant cost, per 100 questions and in all. */
+export interface VariantCost {
+  readonly currency: string;
+  /** Over the questions that ran. */
+  readonly total: number;
+  readonly per100Questions: number;
+  readonly calls: number;
+  readonly promptTokens: number;
+  readonly outputTokens: number;
+  readonly embeddedTokens: number;
+  readonly modelMs: number;
+  /** Tokens of models that have no price, so `total` leaves them out. */
+  readonly unpricedTokens: number;
+  /** The judge, kept apart: it measures the system and is not part of what the system costs. */
+  readonly judge?: {
+    readonly total: number;
+    readonly per100Questions: number;
+    readonly calls: number;
+    readonly promptTokens: number;
+    readonly outputTokens: number;
+    readonly unpricedTokens: number;
+  };
 }
 
 /** How the questions of one variant came out. Means are over the questions that have the score. */
@@ -117,7 +166,10 @@ export interface VariantSummary {
     readonly generationP50?: number;
     readonly generationP95?: number;
   };
+  /** Tokens of the final answers only, as the model reported them at the end of its reply. */
   readonly tokens: { readonly prompt: number; readonly output: number };
+  /** Absent when no call was recorded (a run made before RAG-093, or nothing was asked of a model). */
+  readonly cost?: VariantCost;
   /** Set when the variant could not run at all (a bad config, an index that would not build). */
   readonly error?: string;
 }

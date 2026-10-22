@@ -11,7 +11,7 @@ import type {
   Reranker,
   Retriever,
 } from "../core/index.js";
-import { RagError, Trace } from "../shared/index.js";
+import { RagError, Trace, withTrace } from "../shared/index.js";
 import type { TraceSummary } from "../shared/index.js";
 
 /** The stages of the pipeline, as the trace names them. */
@@ -104,7 +104,14 @@ export class RagPipeline {
    * @throws RagError INVALID_ARGUMENT for a blank question or a bad `k`; whatever a stage throws
    * (PROVIDER_UNAVAILABLE from the model, for one); the signal's reason if it is aborted
    */
-  async ask(question: string, options: AskOptions = {}): Promise<RagAnswer> {
+  ask(question: string, options: AskOptions = {}): Promise<RagAnswer> {
+    // the trace is in scope for everything the question starts, so a metered model or embedder
+    // (RAG-093) records its calls on it without the stages having to pass it along
+    const trace = new Trace();
+    return withTrace(trace, () => this.#ask(trace, question, options));
+  }
+
+  async #ask(trace: Trace, question: string, options: AskOptions): Promise<RagAnswer> {
     const { transformer, retriever, reranker, assembler, llm } = this.#deps;
     const k = options.k ?? this.#deps.k;
     const { filter, signal, history } = options;
@@ -113,7 +120,6 @@ export class RagPipeline {
       throw new RagError("INVALID_ARGUMENT", "The question is blank");
     }
 
-    const trace = new Trace();
     const step = <T>(
       stage: string,
       fn: () => T | Promise<T>,
@@ -206,7 +212,11 @@ async function* generate(
   let end: Extract<ChatDelta, { kind: "end" }> | undefined;
   let failed = false;
   try {
-    for await (const delta of llm.chat(messages, signal === undefined ? {} : { signal })) {
+    // the stream is read long after `ask` returned, so the trace is put back in scope for the call
+    const reply = withTrace(trace, () =>
+      llm.chat(messages, signal === undefined ? {} : { signal }),
+    );
+    for await (const delta of reply) {
       if (delta.kind === "text") characters += delta.text.length;
       else end = delta;
       yield delta;

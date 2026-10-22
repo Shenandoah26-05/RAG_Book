@@ -7,12 +7,13 @@ import type {
   RetrievedRecord,
   VariantSummary,
 } from "../../core/index.js";
-import { RagError, noopLogger } from "../../shared/index.js";
-import type { Logger } from "../../shared/index.js";
+import { RagError, Trace, noopLogger, usageOf, withTrace } from "../../shared/index.js";
+import type { Logger, PriceTable } from "../../shared/index.js";
 import type { Question } from "../dataset/index.js";
 import { judgeRetrieval, retrievalMetrics } from "../metrics/index.js";
 import type { GoldPassage } from "../metrics/index.js";
 import type { ExperimentVariant } from "./expand-variants.js";
+import { NO_PRICES, resultUsage } from "./result-usage.js";
 import type { Experiment } from "./schema.js";
 import { summarizeVariant } from "./summarize.js";
 import type { VariantFacts } from "./summarize.js";
@@ -28,6 +29,8 @@ export interface RunExperimentDeps {
   readonly factory: VariantFactory;
   /** Required when the experiment generates answers. */
   readonly judge?: AnswerJudge;
+  /** What the models cost, to put money on each question. Without it only tokens are reported. */
+  readonly prices?: PriceTable;
   readonly store: ExperimentStore;
   /** The commit the code is at; recorded on every result. */
   readonly gitCommit: string | null;
@@ -115,6 +118,7 @@ export async function runExperiment(deps: RunExperimentDeps): Promise<Experiment
       k: system.k,
       models: provenance.models,
       index: system.index,
+      ...(deps.prices === undefined ? {} : { currency: deps.prices.currency }),
     };
     summaries.push(summarizeVariant(facts, results));
   }
@@ -195,6 +199,8 @@ async function runQuestion(
     relevant: judgement?.relevant[index] ?? false,
   }));
 
+  const prices = deps.prices ?? NO_PRICES;
+  const usage = resultUsage(answer.usage, prices);
   const result: QuestionResult = {
     ...base,
     retrieved: records,
@@ -207,6 +213,7 @@ async function runQuestion(
     ...(answer.refusal === undefined ? {} : { refusal: answer.refusal }),
     ...(answer.answer === undefined ? {} : { answer: answer.answer }),
     ...(answer.tokens === undefined ? {} : { tokens: answer.tokens }),
+    ...(usage === undefined ? {} : { usage }),
     latencyMs: answer.latencyMs,
   };
 
@@ -214,19 +221,29 @@ async function runQuestion(
   if (!generate || deps.judge === undefined || answer.answer === undefined || !answer.answered) {
     return result;
   }
+  const { judge } = deps;
   const started = clock();
+  // the judge is a model too, but it measures the system: its calls go on a trace of their own
+  const judgeTrace = new Trace();
+  const judgeUsage = (): { judgeUsage?: ReturnType<typeof resultUsage> } => {
+    const used = resultUsage(usageOf(judgeTrace.snapshot().stages), prices);
+    return used === undefined ? {} : { judgeUsage: used };
+  };
   try {
-    const judged = await deps.judge.judge(
-      {
-        question: question.question,
-        answer: answer.answer,
-        sources: answer.sources,
-        reference: question.answer,
-      },
-      signal,
+    const judged = await withTrace(judgeTrace, () =>
+      judge.judge(
+        {
+          question: question.question,
+          answer: answer.answer ?? "",
+          sources: answer.sources,
+          reference: question.answer,
+        },
+        signal,
+      ),
     );
     return {
       ...result,
+      ...judgeUsage(),
       generation: {
         ...(judged.faithfulness.score === undefined
           ? {}
@@ -239,6 +256,6 @@ async function runQuestion(
     };
   } catch (error) {
     signal?.throwIfAborted();
-    return { ...result, error: `judge: ${message(error)}` };
+    return { ...result, ...judgeUsage(), error: `judge: ${message(error)}` };
   }
 }

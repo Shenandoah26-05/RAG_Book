@@ -7,5 +7,15 @@ export { createConsoleLogger, createJsonLogger, noopLogger } from "./logger.js";
 export type { LogFields, Logger, LoggerOptions, LogLevel, LogRecord } from "./logger.js";
 export { systemClock } from "./clock.js";
 export type { Clock } from "./clock.js";
+export { currentTrace, withTrace } from "./trace-scope.js";
+export {
+  costOf,
+  EMBED_CALL_STAGE,
+  formatMoney,
+  MODEL_CALL_STAGE,
+  totalUsage,
+  usageOf,
+} from "./usage.js";
+export type { Cost, Price, PriceTable, UsageEntry, UsageTotals } from "./usage.js";
 export { Trace } from "./trace.js";
 export type { StageHandle, StageRecord, TraceSnapshot, TraceSummary } from "./trace.js";

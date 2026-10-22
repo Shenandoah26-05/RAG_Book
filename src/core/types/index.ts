@@ -30,8 +30,10 @@ export type {
   ExperimentSummary,
   GenerationScores,
   QuestionResult,
+  ResultUsage,
   ResultProvenance,
   RetrievalScores,
   RetrievedRecord,
+  VariantCost,
   VariantSummary,
 } from "./experiment.js";

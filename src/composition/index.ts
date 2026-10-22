@@ -91,3 +91,4 @@ export { buildReport } from "./build-report.js";
 export type { BuildReportOptions, Report } from "./build-report.js";
 export { Resilience } from "./build-resilience.js";
 export type { ResilienceOptions } from "./build-resilience.js";
+export { describeUsage, formatMoney, hasPrices } from "./usage-format.js";

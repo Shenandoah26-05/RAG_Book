@@ -1,6 +1,7 @@
 import type { ExperimentSummary, QuestionResult, VariantSummary } from "../../core/index.js";
 import { RagError } from "../../shared/index.js";
 import { compareVariants, METRICS } from "./compare.js";
+import { costSection } from "./cost-section.js";
 import type { MetricName, QuestionComparison, VariantComparison } from "./compare.js";
 
 export interface ReportInput {
@@ -322,6 +323,8 @@ export function renderReport(input: ReportInput): string {
     ),
     "",
   );
+
+  add(...costSection(ran));
 
   // ---- refusals ----
   add("## Refusals", "");

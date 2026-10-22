@@ -8,6 +8,7 @@ import type { RagConfig } from "../config/index.js";
 import type { LlmProvider } from "../core/index.js";
 import type { Resilience } from "./build-resilience.js";
 import { RagError } from "../shared/index.js";
+import { MeteredProvider } from "../strategies/index.js";
 
 type Settings = RagConfig["generation"];
 
@@ -65,5 +66,8 @@ export function buildLlmProvider(
     );
   }
   const provider = create(settings, options);
-  return options.resilience === undefined ? provider : options.resilience.llm(provider);
+  // metering is outermost: it records what the caller experienced, retries and waits included
+  return new MeteredProvider(
+    options.resilience === undefined ? provider : options.resilience.llm(provider),
+  );
 }

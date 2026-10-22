@@ -47,6 +47,55 @@ const session = (
 ): ChatSession =>
   new ChatSession({ pipeline, config: DEFAULT_CONFIG, namespace: "recursive__m", ...extra });
 
+describe("ChatSession: what an answer cost", () => {
+  /** A pipeline whose answer has the model calls of the question recorded on its trace. */
+  const withCalls = (...calls: object[]) => ({
+    describe: () => PARTS,
+    ask: (_question: string, given?: AskOptions): Promise<RagAnswer> => {
+      const answer = fakeAnswer({ pieces: ["Fine."], signal: given?.signal });
+      for (const summary of calls) {
+        answer.trace.start("model-call").end(summary as Record<string, string | number | null>);
+      }
+      return Promise.resolve(answer);
+    },
+  });
+  const call = {
+    model: "openai-compatible:cheap",
+    promptTokens: 1000,
+    outputTokens: 500,
+    completed: true,
+  };
+
+  it("prints the tokens, the time and the calls after the sources", async () => {
+    const out = recordingOutput();
+    await session(withCalls(call, call)).handle("Q?", out);
+    const text = out.text();
+    expect(text).toContain("Usage: 2 model calls: 2,000 tokens in, 1,000 out");
+    expect(text.indexOf("Sources:")).toBeLessThan(text.indexOf("Usage:"));
+    // no prices in the default configuration, so no money is mentioned
+    expect(text).not.toContain("cost");
+  });
+
+  it("adds the cost when the configuration has prices", async () => {
+    const config = {
+      ...DEFAULT_CONFIG,
+      pricing: {
+        currency: "EUR",
+        models: { "openai-compatible:cheap": { inputPerMillion: 0.15, outputPerMillion: 0.6 } },
+      },
+    };
+    const out = recordingOutput();
+    await session(withCalls(call), { config }).handle("Q?", out);
+    expect(out.text()).toContain("cost 0.00045 EUR");
+  });
+
+  it("prints nothing when no model was called", async () => {
+    const out = recordingOutput();
+    await session(withCalls()).handle("Q?", out);
+    expect(out.text()).not.toContain("Usage:");
+  });
+});
+
 describe("ChatSession: questions", () => {
   it("writes the answer piece by piece as it arrives, then the sources", async () => {
     const { pipeline } = scripted({ pieces: ["Embeddings ", "are ", "numbers [1]."] });
