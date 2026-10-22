@@ -15,13 +15,6 @@ import {
   writeFixtureIndex,
   young,
 } from "./search-fixture.testing.js";
-import {
-  buildRetriever,
-  fusionNames,
-  retrievalStrategyNames,
-  usesEmbedder,
-} from "./build-retriever.js";
-import { loadIndex } from "./load-index.js";
 import { buildRerankingRetriever } from "./build-reranker.js";
 import { buildRetriever, fusionNames, retrieverNames, usesEmbedder } from "./build-retriever.js";
 import { openIndex } from "./load-index.js";
@@ -116,13 +109,6 @@ describe("buildRetriever", () => {
     expect(build(withParents, { strategy: "dense" }).name).toBe("dense+parents");
   });
 
-  it("applies the reranking settings (the no-op reranker keeps the order)", async () => {
-    const index = await load();
-    const retriever = buildRetriever({
-      retrieval: { ...DEFAULT_CONFIG.retrieval, strategy: "dense" },
-      rerank: { enabled: true, strategy: "noop", candidates: 4, concurrency: 4 },
-      index,
-      embedder,
   it("leaves reranking to buildRerankingRetriever, which wraps what this builds", async () => {
     const base = build(await load(), { strategy: "dense" });
     const reranking = buildRerankingRetriever(base, {

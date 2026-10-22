@@ -9,10 +9,8 @@ import { ObservedRetriever } from "../strategies/index.js";
 import { buildEmbedder, DEFAULT_EMBEDDING_CACHE_DIR } from "./build-embedder.js";
 import { buildRerankingRetriever } from "./build-reranker.js";
 import { buildRetriever, usesEmbedder } from "./build-retriever.js";
-import { loadIndex } from "./load-index.js";
 import { argvWithVariant } from "./variants.js";
 import { openIndex } from "./load-index.js";
-import { DEFAULT_VARIANTS_DIR, resolveVariant } from "./variants.js";
 
 export interface BuildSearcherOptions {
   readonly argv?: readonly string[];

@@ -62,8 +62,6 @@ export {
 export type { ChatConfigInfo } from "./chat-format.js";
 export { ChatSession } from "./chat-session.js";
 export type { ChatOutput, ChatResult, ChatSessionOptions } from "./chat-session.js";
-export { buildPipeline, DEFAULT_PROMPTS_DIR, PROMPT_FILE } from "./build-pipeline.js";
-export type { BuildPipelineOptions } from "./build-pipeline.js";
 export { buildRetriever, fusionNames, retrieverNames, usesEmbedder } from "./build-retriever.js";
 export type { RetrieverContext } from "./build-retriever.js";
 export { loadIndex, openIndex } from "./load-index.js";
@@ -77,16 +75,6 @@ export type {
   Searcher,
 } from "./build-searcher.js";
 export { describeFilter, describeSearch, searchToJson } from "./search-summary.js";
-export {
-  buildRetriever,
-  fusionNames,
-  retrievalStrategyNames,
-  usesEmbedder,
-} from "./build-retriever.js";
-export type { BuildRetrieverOptions } from "./build-retriever.js";
-export { loadIndex } from "./load-index.js";
-export type { LoadedIndex } from "./load-index.js";
 export { argvWithVariant, DEFAULT_VARIANTS_DIR, listVariants, resolveVariant } from "./variants.js";
-export { DEFAULT_VARIANTS_DIR, listVariants, resolveVariant } from "./variants.js";
 export { buildAnswerJudge } from "./build-answer-judge.js";
 export type { BuildAnswerJudgeOptions } from "./build-answer-judge.js";

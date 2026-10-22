@@ -38,7 +38,6 @@ class Recording implements Retriever {
 }
 
 describe("buildReranker", () => {
-  it("knows the noop reranker by its config name", () => {
   it("knows the noop, llm and cross-encoder rerankers by their config names", () => {
     expect(rerankerNames()).toEqual(["noop", "llm", "cross-encoder"]);
   });
@@ -147,9 +146,7 @@ function fakeOllama(scores: Record<string, number>): typeof fetch & { bodies: un
     const body = JSON.parse(init?.body as string) as { messages: { content: string }[] };
     bodies.push(body);
     const prompt = body.messages[0]?.content ?? "";
-    // the passage sits between the triple quotes; the prompt file may have LF or CRLF line ends
-    const passage = /"""\r?\n([\s\S]*?)\r?\n"""/.exec(prompt)?.[1];
-    const hit = Object.entries(scores).find(([text]) => text === passage);
+    const hit = Object.entries(scores).find(([text]) => prompt.includes(`\n${text}\n`));
     const lines = [
       { message: { content: JSON.stringify({ score: hit?.[1] ?? 0 }) } },
       { done: true, done_reason: "stop" },
