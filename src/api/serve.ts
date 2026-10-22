@@ -19,6 +19,7 @@ if ("error" in args) {
       logger,
       ...(args.variant === undefined ? {} : { variant: args.variant }),
       ...(args.processedDir === undefined ? {} : { processedDir: args.processedDir }),
+      ...(args.rawDir === undefined ? {} : { rawDir: args.rawDir }),
       ...(args.indexDir === undefined ? {} : { indexDir: args.indexDir }),
       ...(args.cacheDir === undefined ? {} : { cacheDir: args.cacheDir }),
     });

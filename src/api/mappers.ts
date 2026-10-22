@@ -1,8 +1,10 @@
 import type {
   AskFilter,
+  BookResponse,
   ChunkResponse,
   PageResponse,
   WireCitation,
+  WireOutlineEntry,
   WireTrace,
   WireUsage,
 } from "@rag-book/api-contract";
@@ -13,6 +15,7 @@ import type {
   MetadataFilter,
   ParsedDocument,
   Page,
+  Section,
 } from "../core/index.js";
 import { costOf, totalUsage, usageOf } from "../shared/index.js";
 import type { PriceTable, TraceSnapshot } from "../shared/index.js";
@@ -129,4 +132,25 @@ export function toMetadataFilter(filter: AskFilter | undefined): MetadataFilter 
     });
   }
   return clauses.length === 0 ? undefined : clauses;
+}
+
+function toWireOutline(sections: readonly Section[]): WireOutlineEntry[] {
+  return sections.map((section) => ({
+    title: section.title,
+    level: section.level,
+    pageStart: section.pageStart,
+    pageEnd: section.pageEnd,
+    children: toWireOutline(section.children),
+  }));
+}
+
+/** What a reader needs to open a book: its size, its table of contents, and whether it has a PDF. */
+export function toWireBook(doc: ParsedDocument, hasPdf: boolean): BookResponse {
+  return {
+    docId: doc.id,
+    title: doc.title,
+    pageCount: doc.pageCount,
+    pdf: hasPdf,
+    outline: toWireOutline(doc.sections),
+  };
 }

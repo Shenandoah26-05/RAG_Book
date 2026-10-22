@@ -169,13 +169,21 @@ export default {
       severity: "warn",
       from: {
         orphan: true,
-        pathNot: ["(^|/)index\\.ts$", TEST_FILE, "\\.d\\.ts$", "^src/(cli|api)/"],
+        pathNot: [
+          "(^|/)index\\.ts$",
+          TEST_FILE,
+          "\\.d\\.ts$",
+          "^src/(cli|api)/",
+          NODE_ONLY_FILES[0],
+        ],
       },
       to: {},
     },
   ],
   options: {
     doNotFollow: { path: "node_modules" },
+    // build output (apps/web/dist) is generated code, not part of the layering
+    exclude: { path: "(^|/)dist/" },
     tsPreCompilationDeps: true,
     tsConfig: { fileName: "tsconfig.json" },
     enhancedResolveOptions: {

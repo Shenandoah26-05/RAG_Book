@@ -9,6 +9,7 @@ import type {
   DocId,
   ParsedDocument,
   RetrievedChunk,
+  SourceFile,
 } from "../core/index.js";
 import type { GroundedAnswer, GroundingReport } from "../pipeline/index.js";
 import { makeDocId, Trace } from "../shared/index.js";
@@ -161,6 +162,8 @@ export interface FakeServicesOptions {
   readonly documents?: ReadonlyMap<DocId, ParsedDocument>;
   readonly chunks?: readonly Chunk[];
   readonly prices?: PriceTable;
+  /** The source PDFs, by the SHA-256 of their contents. Default: none. */
+  readonly pdfs?: ReadonlyMap<string, SourceFile>;
   /** Make loading a document fail this many times first. */
   readonly loadFailures?: number;
 }
@@ -193,6 +196,9 @@ export function fakeServices(options: FakeServicesOptions = {}): FakeServices {
     },
     chunks: {
       get: (ids) => Promise.resolve(ids.map((id) => stored.get(id))),
+    },
+    sources: {
+      find: (sha256) => Promise.resolve(options.pdfs?.get(sha256)),
     },
     documentIds: options.documentIds ?? [DOC],
     prices: options.prices ?? { currency: "USD", models: {} },
