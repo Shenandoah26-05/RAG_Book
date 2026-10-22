@@ -25,6 +25,7 @@
     "experiment": "tsx src/cli/experiment.ts",
     "report": "tsx src/cli/report.ts",
     "eval:validate": "tsx scripts/validate-eval-dataset.ts",
+    "eval:smoke": "tsx src/cli/eval-smoke.ts",
     "bench:rerank": "tsx scripts/bench-rerankers.ts",
     "bench:hnsw": "tsx scripts/bench-hnsw.ts",
     "deps:check": "depcruise src apps packages --config .dependency-cruiser.mjs",

@@ -3,4 +3,5 @@ export * from "./dataset/index.js";
 export * from "./metrics/index.js";
 export * from "./judge/index.js";
 export * from "./experiment/index.js";
+export * from "./regression/index.js";
 export * from "./report/index.js";

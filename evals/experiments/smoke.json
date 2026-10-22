@@ -1,0 +1,7 @@
+{
+  "name": "smoke",
+  "description": "Retrieval regression check (RAG-085): the default setup on 10 questions, retrieval only",
+  "dataset": "evals/datasets/v1-smoke.jsonl",
+  "generation": false,
+  "variants": [{ "name": "default", "config": {} }]
+}

@@ -37,6 +37,7 @@ pnpm test
 | `pnpm deps:check`               | Check the layer rules in `docs/architecture.md`                 |
 | `pnpm eval:validate <pdf>`      | Check the evaluation dataset against the ingested book          |
 | `pnpm experiment <file>`        | Run the variants of an experiment over the evaluation dataset   |
+| `pnpm eval:smoke`               | Retrieval regression check: 10 questions, fails if recall drops |
 | `pnpm report <run>`             | Turn an experiment run into a Markdown A/B report               |
 
 ## Ingesting a book
@@ -61,6 +62,17 @@ The `data/` folder is git-ignored.
 - [docs/adr/](docs/adr/): architecture decision records. Start with
   [ADR-0001: ports and adapters](docs/adr/0001-ports-and-adapters.md). Copy
   [0000-template.md](docs/adr/0000-template.md) for new ones.
+
+## Before merging a retrieval change
+
+```sh
+pnpm eval:smoke                     # compare recall@5 with evals/baselines/smoke.json
+pnpm eval:smoke --update-baseline   # only when the change is meant to move recall
+```
+
+Needs Ollama running and the book ingested. Exit code 0 is a pass, 1 a regression, 2 a run that could
+not be compared. See [docs/design/rag-085-retrieval-regression.md](docs/design/rag-085-retrieval-regression.md).
+The pull request template carries this as a checklist item.
 
 ## Commits
 
