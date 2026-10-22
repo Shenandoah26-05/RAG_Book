@@ -14,6 +14,7 @@ import {
   ScoringReranker,
 } from "../strategies/index.js";
 import { buildLlmProvider } from "./build-llm-provider.js";
+import type { Resilience } from "./build-resilience.js";
 
 type Settings = RagConfig["rerank"];
 
@@ -32,6 +33,8 @@ export interface RerankContext {
   readonly env?: Readonly<Record<string, string | undefined>>;
   readonly fetch?: typeof fetch;
   readonly logger?: Logger;
+  /** The retries and limits the model built here gets, shared with the answering model. */
+  readonly resilience?: Resilience;
   /** Where the prompt files are. Default: `prompts/` at the project root. */
   readonly promptsDir?: string;
 }
@@ -47,6 +50,7 @@ function llmFor(context: RerankContext): LlmProvider {
   return buildLlmProvider(context.generation, {
     ...(context.env === undefined ? {} : { env: context.env }),
     ...(context.fetch === undefined ? {} : { fetch: context.fetch }),
+    ...(context.resilience === undefined ? {} : { resilience: context.resilience }),
   });
 }
 

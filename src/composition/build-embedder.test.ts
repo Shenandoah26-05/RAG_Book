@@ -35,3 +35,31 @@ describe("buildEmbedder", () => {
     );
   });
 });
+
+describe("buildEmbedder: openai-compatible", () => {
+  const build = (spec: string, env: Record<string, string> = {}) =>
+    buildEmbedder(spec, { batchSize: 8, env, cacheDir: "data/cache/test-unused" });
+
+  it("knows OpenAI's embedding models and their vector lengths", () => {
+    expect(embedderNames()).toContain("openai-compatible:text-embedding-3-small");
+    const embedder = build("openai-compatible:text-embedding-3-small");
+    expect(embedder.modelId).toBe("openai-compatible:text-embedding-3-small");
+    expect(embedder.dimensions).toBe(1536);
+  });
+
+  it("takes the vector length of another model from OPENAI_EMBEDDING_DIMENSIONS", () => {
+    const embedder = build("openai-compatible:nomic-embed-text", {
+      OPENAI_EMBEDDING_DIMENSIONS: "768",
+    });
+    expect(embedder.dimensions).toBe(768);
+  });
+
+  it("asks for OPENAI_EMBEDDING_DIMENSIONS when the model is not known, and checks it", () => {
+    expect(() => build("openai-compatible:nomic-embed-text")).toThrow(
+      /Set OPENAI_EMBEDDING_DIMENSIONS/,
+    );
+    expect(() => build("openai-compatible:x", { OPENAI_EMBEDDING_DIMENSIONS: "many" })).toThrow(
+      /whole number/,
+    );
+  });
+});

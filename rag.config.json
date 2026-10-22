@@ -8,6 +8,25 @@
   "vectorStore": { "type": "in-memory", "dir": "data/index" },
   "retrieval": { "strategy": "hybrid", "k": 5, "fusion": "rrf" },
   "rerank": { "enabled": false, "strategy": "llm", "candidates": 20, "concurrency": 4 },
+  "pricing": { "currency": "USD", "models": {} },
+  "resilience": {
+    "generation": {
+      "retries": 2,
+      "backoffMs": 500,
+      "maxBackoffMs": 8000,
+      "timeoutMs": 120000,
+      "requestsPerMinute": 0,
+      "maxConcurrent": 0
+    },
+    "embedding": {
+      "retries": 2,
+      "backoffMs": 500,
+      "maxBackoffMs": 8000,
+      "timeoutMs": 60000,
+      "requestsPerMinute": 0,
+      "maxConcurrent": 0
+    }
+  },
   "queryTransform": {
     "rewrite": true,
     "historyTurns": 4,

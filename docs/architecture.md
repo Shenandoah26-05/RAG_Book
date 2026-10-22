@@ -8,7 +8,7 @@ A/B-tested without touching the pipeline.
 
 ```mermaid
 flowchart TD
-  entry["cli/ · web/<br/>entry points, no logic"]
+  entry["cli/ · api/<br/>entry points, no logic"]
   comp["composition/<br/>config → concrete objects"]
   orch["pipeline/ · eval/<br/>orchestration, ports only"]
   impl["strategies/ · adapters/<br/>implementations"]
@@ -29,17 +29,18 @@ flowchart TD
 Dependencies point **downwards only**. Solid arrows are the main flow; dotted arrows show that any
 layer may use `shared/` and `config/`.
 
-| Folder         | Role                                                                          | May import                                                    |
-| -------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| `core/`        | Domain types and port interfaces                                              | `core/` only. No third-party packages (Node built-ins are OK) |
-| `strategies/`  | Pure algorithms (chunkers, BM25, RRF)                                         | `core/`, `shared/`, its own folder                            |
-| `adapters/`    | The outside world (Ollama, pdf.js, files)                                     | `core/`, `shared/`, its own folder                            |
-| `pipeline/`    | Ingest, index, query orchestration                                            | ports in `core/`, `shared/`, `config/`. No concrete classes   |
-| `eval/`        | Experiments and metrics                                                       | same as `pipeline/`                                           |
-| `composition/` | The only place that turns config into objects (`new OllamaEmbedder(...)`)     | everything                                                    |
-| `config/`      | zod schema and loading of `rag.config.json`                                   | `core/`, `shared/`                                            |
-| `shared/`      | Logger, errors, trace, document ids (uses the `uuid` package), file hashing   | `core/`, `shared/`                                            |
-| `cli/`         | Parse arguments, call the composition root, print. The only place for console | everything except concrete classes (via `composition/`)       |
+| Folder         | Role                                                                                   | May import                                                                           |
+| -------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `core/`        | Domain types and port interfaces                                                       | `core/` only. No third-party packages (Node built-ins are OK)                        |
+| `strategies/`  | Pure algorithms (chunkers, BM25, RRF)                                                  | `core/`, `shared/`, its own folder                                                   |
+| `adapters/`    | The outside world (Ollama, pdf.js, files)                                              | `core/`, `shared/`, its own folder                                                   |
+| `pipeline/`    | Ingest, index, query orchestration                                                     | ports in `core/`, `shared/`, `config/`. No concrete classes                          |
+| `eval/`        | Experiments and metrics                                                                | same as `pipeline/`                                                                  |
+| `composition/` | The only place that turns config into objects (`new OllamaEmbedder(...)`)              | everything                                                                           |
+| `config/`      | zod schema and loading of `rag.config.json`                                            | `core/`, `shared/`                                                                   |
+| `shared/`      | Logger, errors, trace, document ids (uses the `uuid` package), file hashing            | `core/`, `shared/`                                                                   |
+| `cli/`         | Parse arguments, call the composition root, print. The only place for console          | everything except concrete classes (via `composition/`)                              |
+| `api/`         | Hono routes (RAG-101): validate a request, call the composition root, write a response | everything except concrete classes (via `composition/`), and `packages/api-contract` |
 
 ## Rules enforced automatically
 
@@ -55,8 +56,33 @@ layer may use `shared/` and `config/`.
 7. No circular dependencies.
 8. `src/testing/` holds helpers for tests (they import vitest and are left out of the build). Test
    files may import them from any layer; production code may not.
+9. The web app and the wire format live **outside** `src/` and may not import the library (see below).
+10. `src/cli/` and `src/api/` are entry points: nothing imports them, and they do not import each other.
 
 Imports use the `.js` extension (`from "./x.js"`) because the project is ESM (`module: NodeNext`).
+
+## The workspace around the library
+
+The root package keeps `src/` as one library. Two pnpm workspace members sit beside it
+([ADR-0006](adr/0006-web-stack-and-workspace.md)):
+
+| Folder                   | Role                                                                           | May import                                     |
+| ------------------------ | ------------------------------------------------------------------------------ | ---------------------------------------------- |
+| `apps/web/`              | The browser app: Vite + React (RAG-102 onwards)                                | `packages/api-contract`. Never `src/`, no Node |
+| `packages/api-contract/` | Request schemas and response and stream types: the wire format of the HTTP API | `zod` only. No project code, no Node           |
+
+```mermaid
+flowchart LR
+  web["apps/web"] --> contract["packages/api-contract"]
+  api["src/api"] --> contract
+  web -. "HTTP + SSE" .-> api
+  api --> lib["src/ (composition → pipeline → ... → core)"]
+  cli["src/cli"] --> lib
+```
+
+The rules that keep the browser and Node apart are in `.dependency-cruiser.mjs` and run in
+`pnpm deps:check`, which covers `src`, `apps` and `packages`. Only `src/api/` maps domain types to
+the types of the contract, so a change inside the library cannot change what the browser receives by accident.
 
 ## Adding code
 

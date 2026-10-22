@@ -255,6 +255,8 @@ describe("hashConfig", () => {
       judge: DEFAULT_CONFIG.judge,
       generation: DEFAULT_CONFIG.generation,
       queryTransform: DEFAULT_CONFIG.queryTransform,
+      resilience: DEFAULT_CONFIG.resilience,
+      pricing: DEFAULT_CONFIG.pricing,
       rerank: DEFAULT_CONFIG.rerank,
       retrieval: { fusion: "rrf", k: 5, strategy: "hybrid" },
       vectorStore: DEFAULT_CONFIG.vectorStore,

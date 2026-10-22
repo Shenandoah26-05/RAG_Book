@@ -38,6 +38,7 @@ pnpm test
 | `pnpm eval:validate <pdf>`      | Check the evaluation dataset against the ingested book          |
 | `pnpm experiment <file>`        | Run the variants of an experiment over the evaluation dataset   |
 | `pnpm eval:smoke`               | Retrieval regression check: 10 questions, fails if recall drops |
+| `pnpm report <run>`             | Turn an experiment run into a Markdown A/B report               |
 
 ## Ingesting a book
 

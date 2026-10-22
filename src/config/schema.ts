@@ -11,6 +11,36 @@ const positiveInt = z
   .int("must be a whole number")
   .positive("must be greater than 0");
 const flag = z.boolean("must be true or false");
+const price = z.number("must be a number").nonnegative("must be 0 or greater");
+const wholeNumber = z
+  .number("must be a number")
+  .int("must be a whole number")
+  .nonnegative("must be 0 or greater");
+
+/**
+ * How a model or an embedder is protected from the network (RAG-092). Every number is "off" at 0, so
+ * a setting is never needed to turn something off. The decorators are built from these in
+ * composition/, not in the adapters.
+ */
+const resilience = z
+  .strictObject({
+    /** Tries again after a failure that may pass (a dropped connection, a timeout, HTTP 429 or 5xx). */
+    retries: wholeNumber,
+    /** Wait before the first retry; it doubles each time, with jitter. */
+    backoffMs: wholeNumber,
+    /** No retry waits longer than this, and a server asking for more is not waited for. */
+    maxBackoffMs: wholeNumber,
+    /** Gives up when nothing has arrived for this long (a reply), or the call has taken this long (an embedding). */
+    timeoutMs: wholeNumber,
+    /** At most this many calls start in any minute. */
+    requestsPerMinute: wholeNumber,
+    /** At most this many calls run at once. */
+    maxConcurrent: wholeNumber,
+  })
+  .refine((r) => r.maxBackoffMs >= r.backoffMs, {
+    path: ["maxBackoffMs"],
+    error: "must be at least backoffMs",
+  });
 
 /**
  * Every section of rag.config.json. Objects are strict: an unknown key is an error, so a typo such
@@ -59,6 +89,16 @@ export const ragConfigSchema = z
       candidates: positiveInt,
       concurrency: positiveInt,
     }),
+    /**
+     * What the models cost (RAG-093), by model id as it appears in a trace, e.g.
+     * "openai-compatible:gpt-4o-mini". A model that is not listed has no price: its calls are counted
+     * in tokens and shown as unpriced. A local model can be listed at 0 to say it is free.
+     */
+    pricing: z.strictObject({
+      currency: text,
+      models: z.record(text, z.strictObject({ inputPerMillion: price, outputPerMillion: price })),
+    }),
+    resilience: z.strictObject({ generation: resilience, embedding: resilience }),
     queryTransform: z.strictObject({
       rewrite: flag,
       historyTurns: positiveInt,

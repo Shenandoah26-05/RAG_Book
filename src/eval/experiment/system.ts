@@ -1,4 +1,5 @@
 import type { ResultProvenance, RetrievedChunk, VariantSummary } from "../../core/index.js";
+import type { UsageEntry } from "../../shared/index.js";
 import type { ExperimentVariant } from "./expand-variants.js";
 
 /** What one variant did with one question, before it is scored. */
@@ -13,6 +14,11 @@ export interface SystemAnswer {
   /** Present when `generate` was asked for and the system answered. */
   readonly answer?: string;
   readonly tokens?: { readonly prompt?: number; readonly output?: number };
+  /**
+   * Every model and embedder call made for this question, read from its trace: the answer, and the
+   * rewriting, reranking and embedding around it. Absent when the system does not meter its calls.
+   */
+  readonly usage?: readonly UsageEntry[];
   readonly latencyMs: { readonly retrieval: number; readonly generation?: number };
 }
 

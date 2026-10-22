@@ -8,3 +8,4 @@ export type { RunExperimentDeps } from "./run-experiment.js";
 export { percentile, summarizeVariant } from "./summarize.js";
 export type { VariantFacts } from "./summarize.js";
 export type { SystemAnswer, VariantFactory, VariantSystem } from "./system.js";
+export { NO_PRICES, resultUsage } from "./result-usage.js";

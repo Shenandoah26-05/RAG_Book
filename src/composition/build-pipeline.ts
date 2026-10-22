@@ -16,6 +16,7 @@ import {
 import { buildChunkerRegistry } from "./build-chunkers.js";
 import { buildEmbedder, DEFAULT_EMBEDDING_CACHE_DIR } from "./build-embedder.js";
 import { buildLlmProvider } from "./build-llm-provider.js";
+import { Resilience } from "./build-resilience.js";
 import { buildQueryTransformer, withVariantSearch } from "./build-query-transformer.js";
 import { resolveRerank } from "./build-reranker.js";
 import { buildRetriever } from "./build-retriever.js";
@@ -110,6 +111,8 @@ export async function buildPipelineWithConfig(
     argv: await argvWithVariant(argv, options.variant, options.variantsDir),
     env,
   });
+  // one for the run, so the answering model, the reranker and the embedder each keep to their limit
+  const resilience = new Resilience(config.resilience, { logger });
   const embedder =
     options.embedder ??
     buildEmbedder(`${config.embedding.provider}:${config.embedding.model}`, {
@@ -117,6 +120,7 @@ export async function buildPipelineWithConfig(
       env,
       cacheDir,
       logger,
+      resilience,
       ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
     });
   const tokenizer = buildTokenizer(config.chunking.tokenizer);
@@ -137,6 +141,7 @@ export async function buildPipelineWithConfig(
     ...(options.llm === undefined ? { generation: config.generation } : { llm: options.llm }),
     env,
     logger,
+    resilience,
     ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
   });
 
@@ -158,6 +163,7 @@ export async function buildPipelineWithConfig(
     options.llm ??
     buildLlmProvider(config.generation, {
       env,
+      resilience,
       ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
     });
 

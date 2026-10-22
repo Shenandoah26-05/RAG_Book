@@ -14,9 +14,10 @@ import type {
 } from "../core/index.js";
 import { indexNamespace } from "../pipeline/index.js";
 import { makeDocId } from "../shared/index.js";
-import { Bm25Index } from "../strategies/index.js";
+import { Bm25Index, MeteredEmbedder, MeteredProvider } from "../strategies/index.js";
 import { makeDocument } from "../testing/make-document.testing.js";
 import { buildExperiment, indexDirFor } from "./build-experiment.js";
+import { buildReport } from "./build-report.js";
 import type { BuildExperimentOptions, EnsureIndex } from "./build-experiment.js";
 import { DEFAULT_CONFIG } from "../config/index.js";
 
@@ -433,6 +434,140 @@ describe("buildExperiment: indexes", () => {
     );
     const summary = await experiment.run();
     expect(summary.variants[0]?.error).toMatch(/maxToken/);
+  });
+});
+
+// The report reads the files the runner writes. Checking it against real output, not hand-made
+// fixtures, is what keeps the two from drifting apart.
+describe("buildExperiment: the report reads what the runner wrote", () => {
+  it.each([false, true])("with generation %s", async (generation) => {
+    const experiment = await buildExperiment(
+      await options({
+        name: "reported",
+        generation,
+        variants: [
+          { name: "dense", config: { retrieval: { strategy: "dense", k: 2 } } },
+          { name: "bm25", config: { retrieval: { strategy: "bm25", k: 2 } } },
+        ],
+      }),
+    );
+    await experiment.run();
+    const report = await buildReport({ target: experiment.location });
+
+    expect(report.markdown).toContain("# Experiment reported: A/B report");
+    expect(report.markdown).toContain("### `dense`");
+    expect(report.markdown).toContain("### `bm25`");
+    // the configs come from the run's own folder
+    expect(report.markdown).toContain('"strategy": "bm25"');
+    expect(report.markdown.includes("correctness")).toBe(generation);
+  });
+});
+
+// The model and embedder are metered where the real builders meter them, so the experiment sees every
+// call made for a question on its trace and prices it from the config.
+describe("buildExperiment: what a run costs", () => {
+  // 120 tokens in at 1,000 per million and 5 out at 2,000 per million: 0.12 + 0.01 for each answer
+  const PRICING = {
+    currency: "USD",
+    models: { "fake:generator": { inputPerMillion: 1000, outputPerMillion: 2000 } },
+  };
+  const metered = {
+    llm: new MeteredProvider(generator),
+    judgeLlm: new MeteredProvider(judgeLlm),
+    embedder: new MeteredEmbedder(embedder),
+  };
+
+  async function costed() {
+    const experiment = await buildExperiment(
+      await options(
+        {
+          name: "costed",
+          generation: true,
+          base: { pricing: PRICING },
+          variants: [
+            { name: "dense", config: { retrieval: { strategy: "dense", k: 2 } } },
+            { name: "bm25", config: { retrieval: { strategy: "bm25", k: 2 } } },
+          ],
+        },
+        metered,
+      ),
+    );
+    const summary = await experiment.run();
+    return { experiment, summary, saved: await results(experiment.location) };
+  }
+
+  it("records the calls made for each question and prices them", async () => {
+    const { saved } = await costed();
+    const first = saved.find((r) => r.variant === "dense" && r.questionId === "q001");
+    expect(first?.usage).toMatchObject({
+      // the answer, and the embedding of the question
+      calls: 2,
+      promptTokens: 120,
+      outputTokens: 5,
+      cost: expect.closeTo(0.13, 9) as number,
+    });
+    // 18 characters of question at 4 per token, for a model with no price
+    expect(first?.usage?.embeddedTokens).toBe(5);
+    expect(first?.usage?.unpricedTokens).toBe(5);
+  });
+
+  it("makes no call, and so records no usage, for a question the system refuses", async () => {
+    const { saved } = await costed();
+    // BM25 finds nothing for the question about football, so the model is never asked
+    const refused = saved.find((r) => r.variant === "bm25" && r.questionId === "q003");
+    expect(refused?.answered).toBe(false);
+    expect(refused).not.toHaveProperty("usage");
+  });
+
+  it("totals the cost per 100 questions for each variant", async () => {
+    const { summary } = await costed();
+    const [dense, bm25] = summary.variants;
+    // dense answered all 3 questions: 3 x 0.13 = 0.39 in all, 13.00 per 100 questions
+    expect(dense?.cost).toMatchObject({
+      currency: "USD",
+      total: expect.closeTo(0.39, 9) as number,
+      per100Questions: expect.closeTo(13, 9) as number,
+    });
+    // BM25 answered 2 of 3: 0.26 over 3 questions
+    expect(bm25?.cost?.total).toBeCloseTo(0.26, 9);
+    expect(bm25?.cost?.per100Questions).toBeCloseTo((0.26 / 3) * 100, 9);
+  });
+
+  it("keeps the judge's calls apart from the system's", async () => {
+    const { summary, saved } = await costed();
+    // three judge prompts per answer (faithfulness, relevance, correctness)
+    const first = saved.find((r) => r.variant === "dense" && r.questionId === "q001");
+    expect(first?.judgeUsage?.calls).toBe(3);
+    expect(first?.usage?.calls).toBe(2);
+    expect(summary.variants[0]?.cost?.judge?.calls).toBe(9);
+    expect(summary.variants[1]?.cost?.judge?.calls).toBe(6);
+    // the system's cost does not include the judge's
+    expect(summary.variants[0]?.cost?.calls).toBe(6);
+  });
+
+  it("shows the cost in the report", async () => {
+    const { experiment } = await costed();
+    const { markdown } = await buildReport({ target: experiment.location });
+    expect(markdown).toContain("### Cost per 100 questions");
+    expect(markdown).toContain("cost per 100 (USD)");
+    expect(markdown).toContain("| `dense` | 13.00 |");
+    expect(markdown).toContain("The judge, apart from the system:");
+  });
+
+  it("reports tokens but no money when the config has no prices", async () => {
+    const experiment = await buildExperiment(
+      await options(
+        {
+          name: "free",
+          variants: [{ name: "dense", config: { retrieval: { strategy: "dense" } } }],
+        },
+        metered,
+      ),
+    );
+    const summary = await experiment.run();
+    expect(summary.variants[0]?.cost).toMatchObject({ total: 0, per100Questions: 0 });
+    const { markdown } = await buildReport({ target: experiment.location });
+    expect(markdown).toContain("No price is set for these models, so no money is shown");
   });
 });
 

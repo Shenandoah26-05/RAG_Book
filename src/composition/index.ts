@@ -90,3 +90,8 @@ export { describePlan, describeSummary } from "./experiment-summary.js";
 export { runSmoke, SMOKE_BASELINE_FILE, SMOKE_EXPERIMENT_FILE } from "./build-smoke.js";
 export type { SmokeOptions, SmokeOutcome } from "./build-smoke.js";
 export { describeRegression } from "../eval/index.js";
+export { buildReport } from "./build-report.js";
+export type { BuildReportOptions, Report } from "./build-report.js";
+export { Resilience } from "./build-resilience.js";
+export type { ResilienceOptions } from "./build-resilience.js";
+export { describeUsage, formatMoney, hasPrices } from "./usage-format.js";

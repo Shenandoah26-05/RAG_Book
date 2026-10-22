@@ -4,3 +4,5 @@ export type { OllamaEmbedderOptions } from "./ollama-embedder.js";
 export { CachingEmbedder, embeddingCacheKey } from "./caching-embedder.js";
 export type { EmbeddingCache } from "./caching-embedder.js";
 export { FileEmbeddingCache } from "./file-embedding-cache.js";
+export { OpenAiEmbedder, KNOWN_OPENAI_EMBEDDING_DIMENSIONS } from "./openai-embedder.js";
+export type { OpenAiEmbedderOptions } from "./openai-embedder.js";

@@ -1,13 +1,22 @@
-import { normalizeOllamaHost, OllamaProvider } from "../adapters/index.js";
+import {
+  normalizeOllamaHost,
+  OllamaProvider,
+  OpenAiChatProvider,
+  OpenAiEndpoint,
+} from "../adapters/index.js";
 import type { RagConfig } from "../config/index.js";
 import type { LlmProvider } from "../core/index.js";
+import type { Resilience } from "./build-resilience.js";
 import { RagError } from "../shared/index.js";
+import { MeteredProvider } from "../strategies/index.js";
 
 type Settings = RagConfig["generation"];
 
 export interface BuildLlmProviderOptions {
   readonly env?: Readonly<Record<string, string | undefined>>;
   readonly fetch?: typeof fetch;
+  /** Retries, timeouts and rate limits (RAG-092). Without it the provider is used as it is. */
+  readonly resilience?: Resilience;
 }
 
 const PROVIDERS: ReadonlyMap<
@@ -19,6 +28,17 @@ const PROVIDERS: ReadonlyMap<
     (settings, options) =>
       new OllamaProvider({
         address: normalizeOllamaHost((options.env ?? process.env)["OLLAMA_HOST"]),
+        model: settings.model,
+        temperature: settings.temperature,
+        maxOutputTokens: settings.maxOutputTokens,
+        ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
+      }),
+  ],
+  [
+    "openai-compatible",
+    (settings, options) =>
+      new OpenAiChatProvider({
+        endpoint: OpenAiEndpoint.fromEnv(options.env ?? process.env),
         model: settings.model,
         temperature: settings.temperature,
         maxOutputTokens: settings.maxOutputTokens,
@@ -45,5 +65,9 @@ export function buildLlmProvider(
       `Unknown provider "${settings.provider}" in generation.provider. Known providers: ${llmProviderNames().join(", ")}`,
     );
   }
-  return create(settings, options);
+  const provider = create(settings, options);
+  // metering is outermost: it records what the caller experienced, retries and waits included
+  return new MeteredProvider(
+    options.resilience === undefined ? provider : options.resilience.llm(provider),
+  );
 }
