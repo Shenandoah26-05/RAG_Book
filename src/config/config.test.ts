@@ -252,6 +252,7 @@ describe("hashConfig", () => {
   it("does not depend on key order", () => {
     const reordered = {
       grounding: DEFAULT_CONFIG.grounding,
+      judge: DEFAULT_CONFIG.judge,
       generation: DEFAULT_CONFIG.generation,
       rerank: DEFAULT_CONFIG.rerank,
       retrieval: { fusion: "rrf", k: 5, strategy: "hybrid" },
