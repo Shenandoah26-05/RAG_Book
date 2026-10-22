@@ -1,4 +1,9 @@
-import { normalizeOllamaHost, OllamaProvider } from "../adapters/index.js";
+import {
+  normalizeOllamaHost,
+  OllamaProvider,
+  OpenAiChatProvider,
+  OpenAiEndpoint,
+} from "../adapters/index.js";
 import type { RagConfig } from "../config/index.js";
 import type { LlmProvider } from "../core/index.js";
 import { RagError } from "../shared/index.js";
@@ -19,6 +24,17 @@ const PROVIDERS: ReadonlyMap<
     (settings, options) =>
       new OllamaProvider({
         address: normalizeOllamaHost((options.env ?? process.env)["OLLAMA_HOST"]),
+        model: settings.model,
+        temperature: settings.temperature,
+        maxOutputTokens: settings.maxOutputTokens,
+        ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
+      }),
+  ],
+  [
+    "openai-compatible",
+    (settings, options) =>
+      new OpenAiChatProvider({
+        endpoint: OpenAiEndpoint.fromEnv(options.env ?? process.env),
         model: settings.model,
         temperature: settings.temperature,
         maxOutputTokens: settings.maxOutputTokens,

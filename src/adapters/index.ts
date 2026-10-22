@@ -3,6 +3,7 @@ export * from "./loaders/index.js";
 export * from "./embedders/index.js";
 export * from "./llm/index.js";
 export * from "./ollama/index.js";
+export * from "./openai-compatible/index.js";
 export * from "./rerankers/index.js";
 export * from "./tokenizers/index.js";
 export * from "./vector-stores/index.js";
