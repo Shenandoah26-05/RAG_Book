@@ -1,5 +1,3 @@
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
 import { FileDocumentStore, FileIndexWriter } from "../adapters/index.js";
 import { hashConfig, loadConfig } from "../config/index.js";
 import type { Env, RagConfig } from "../config/index.js";
@@ -14,6 +12,7 @@ import { buildEmbedder, DEFAULT_EMBEDDING_CACHE_DIR } from "./build-embedder.js"
 import { DEFAULT_PROCESSED_DIR } from "./build-ingest.js";
 import { buildChunker } from "./chunker-registry.js";
 import { buildTokenizer } from "./registries.js";
+import { currentGitCommit } from "./git-commit.js";
 import { resolveDocId } from "./resolve-doc-id.js";
 
 export interface BuildIndexerOptions {
@@ -43,15 +42,6 @@ export interface IndexRunOptions {
 
 export interface Indexer {
   run(options?: IndexRunOptions): Promise<IndexResult>;
-}
-
-async function currentGitCommit(): Promise<string | null> {
-  try {
-    const { stdout } = await promisify(execFile)("git", ["rev-parse", "HEAD"]);
-    return stdout.trim() || null;
-  } catch {
-    return null;
-  }
 }
 
 /**

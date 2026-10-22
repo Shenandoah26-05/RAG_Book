@@ -78,3 +78,12 @@ export { describeFilter, describeSearch, searchToJson } from "./search-summary.j
 export { argvWithVariant, DEFAULT_VARIANTS_DIR, listVariants, resolveVariant } from "./variants.js";
 export { buildAnswerJudge } from "./build-answer-judge.js";
 export type { BuildAnswerJudgeOptions } from "./build-answer-judge.js";
+export { buildExperiment, DEFAULT_RESULTS_DIR, indexDirFor } from "./build-experiment.js";
+export type {
+  BuildExperimentOptions,
+  EnsureIndex,
+  EnsuredIndex,
+  Experiment,
+  ExperimentPlan,
+} from "./build-experiment.js";
+export { describePlan, describeSummary } from "./experiment-summary.js";

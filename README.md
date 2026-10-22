@@ -36,6 +36,7 @@ pnpm test
 | `pnpm run doctor`               | Check that Ollama is running and has the models                 |
 | `pnpm deps:check`               | Check the layer rules in `docs/architecture.md`                 |
 | `pnpm eval:validate <pdf>`      | Check the evaluation dataset against the ingested book          |
+| `pnpm experiment <file>`        | Run the variants of an experiment over the evaluation dataset   |
 
 ## Ingesting a book
 
