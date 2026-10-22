@@ -11,6 +11,7 @@ import {
 import type { Embedder } from "../core/index.js";
 import { RagError } from "../shared/index.js";
 import type { Logger } from "../shared/index.js";
+import type { Resilience } from "./build-resilience.js";
 
 /** Where cached vectors go unless told otherwise. */
 export const DEFAULT_EMBEDDING_CACHE_DIR = "data/cache/embeddings";
@@ -48,6 +49,12 @@ export interface BuildEmbedderOptions {
   readonly cacheDir?: string;
   readonly logger?: Logger;
   readonly fetch?: typeof fetch;
+  /**
+   * Retries, timeouts and rate limits (RAG-092), applied inside the cache so that a cached vector
+   * costs no turn and no retry. With it the adapter does not retry on its own: that is the
+   * decorator's job, and both would multiply.
+   */
+  readonly resilience?: Resilience;
 }
 
 /**
@@ -72,6 +79,7 @@ export function buildEmbedder(spec: string, options: BuildEmbedderOptions): Embe
       model,
       dimensions,
       batchSize: options.batchSize,
+      ...(options.resilience === undefined ? {} : { maxRetries: 0 }),
       ...fetchOption,
     });
   } else if (provider === OPENAI_COMPATIBLE) {
@@ -89,7 +97,7 @@ export function buildEmbedder(spec: string, options: BuildEmbedderOptions): Embe
     );
   }
   return new CachingEmbedder(
-    inner,
+    options.resilience === undefined ? inner : options.resilience.embedder(inner),
     new FileEmbeddingCache(options.cacheDir ?? DEFAULT_EMBEDDING_CACHE_DIR),
     options.logger,
   );

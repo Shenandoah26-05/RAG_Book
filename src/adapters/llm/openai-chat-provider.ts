@@ -173,6 +173,7 @@ export class OpenAiChatProvider implements LlmProvider {
         throw new RagError(
           "PROVIDER_UNAVAILABLE",
           `The server at ${this.#endpoint.baseUrl} sent nothing for ${this.#idleTimeoutMs.toString()} ms`,
+          { retryable: true },
         );
       }
       throw error;

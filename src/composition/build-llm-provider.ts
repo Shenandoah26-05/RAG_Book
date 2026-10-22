@@ -6,6 +6,7 @@ import {
 } from "../adapters/index.js";
 import type { RagConfig } from "../config/index.js";
 import type { LlmProvider } from "../core/index.js";
+import type { Resilience } from "./build-resilience.js";
 import { RagError } from "../shared/index.js";
 
 type Settings = RagConfig["generation"];
@@ -13,6 +14,8 @@ type Settings = RagConfig["generation"];
 export interface BuildLlmProviderOptions {
   readonly env?: Readonly<Record<string, string | undefined>>;
   readonly fetch?: typeof fetch;
+  /** Retries, timeouts and rate limits (RAG-092). Without it the provider is used as it is. */
+  readonly resilience?: Resilience;
 }
 
 const PROVIDERS: ReadonlyMap<
@@ -61,5 +64,6 @@ export function buildLlmProvider(
       `Unknown provider "${settings.provider}" in generation.provider. Known providers: ${llmProviderNames().join(", ")}`,
     );
   }
-  return create(settings, options);
+  const provider = create(settings, options);
+  return options.resilience === undefined ? provider : options.resilience.llm(provider);
 }

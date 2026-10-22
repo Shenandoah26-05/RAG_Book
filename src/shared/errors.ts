@@ -13,16 +13,31 @@ export type RagErrorCode =
 export interface RagErrorOptions {
   /** The lower-level error that caused this one (a failed fetch, a parse error, ...). */
   readonly cause?: unknown;
+  /**
+   * Whether the same call may succeed if tried again: true for a dropped connection, a timeout, HTTP
+   * 429 or 5xx; false for a missing model, a wrong key or a reply that is not what was expected.
+   * Only the code that saw the failure can say, so adapters set it. Left out, it means "unknown",
+   * and the retrying decorator (RAG-092) does not retry it.
+   */
+  readonly retryable?: boolean;
+  /** How long the server asked callers to wait before trying again (`Retry-After`), in milliseconds. */
+  readonly retryAfterMs?: number;
 }
 
 /** The error type for every failure the pipeline reports on purpose. */
 export class RagError extends Error {
   readonly code: RagErrorCode;
+  /** See `RagErrorOptions.retryable`. Undefined means unknown. */
+  readonly retryable: boolean | undefined;
+  /** See `RagErrorOptions.retryAfterMs`. */
+  readonly retryAfterMs: number | undefined;
 
   constructor(code: RagErrorCode, message: string, options: RagErrorOptions = {}) {
     super(message, "cause" in options ? { cause: options.cause } : undefined);
     this.name = "RagError";
     this.code = code;
+    this.retryable = options.retryable;
+    this.retryAfterMs = options.retryAfterMs;
   }
 
   toJSON(): SerializedError {

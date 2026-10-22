@@ -19,6 +19,26 @@ export const DEFAULT_CONFIG: RagConfig = {
   rerank: { enabled: false, strategy: "llm", candidates: 20, concurrency: 4 },
   // rewrite: turn a follow-up into a standalone question using the last `historyTurns` turns (only
   // when there is history). hyde and multiQuery are experiments and cost an extra model call each.
+  // Local models: retry what may pass, give up on silence, and do not limit the rate (0 is off).
+  // The timeouts are generous because a model that is still loading says nothing for a while.
+  resilience: {
+    generation: {
+      retries: 2,
+      backoffMs: 500,
+      maxBackoffMs: 8000,
+      timeoutMs: 120_000,
+      requestsPerMinute: 0,
+      maxConcurrent: 0,
+    },
+    embedding: {
+      retries: 2,
+      backoffMs: 500,
+      maxBackoffMs: 8000,
+      timeoutMs: 60_000,
+      requestsPerMinute: 0,
+      maxConcurrent: 0,
+    },
+  },
   queryTransform: {
     rewrite: true,
     historyTurns: 4,

@@ -8,6 +8,7 @@ import type { JudgeMetric } from "../eval/index.js";
 import { noopLogger, RagError } from "../shared/index.js";
 import type { Logger } from "../shared/index.js";
 import { buildLlmProvider } from "./build-llm-provider.js";
+import type { Resilience } from "./build-resilience.js";
 
 /** `prompts/` at the root of the project, whether this runs from `src/` or from the build. */
 const DEFAULT_PROMPTS_DIR = fileURLToPath(new URL("../../prompts/", import.meta.url));
@@ -27,6 +28,8 @@ export interface BuildAnswerJudgeOptions {
   readonly promptsDir?: string;
   /** Warns when the judge is the same model as the generator. */
   readonly logger?: Logger;
+  /** Retries and limits for the judge model; it shares the limit of the generation provider. */
+  readonly resilience?: Resilience;
 }
 
 /**
@@ -54,6 +57,7 @@ export function buildAnswerJudge(
       {
         ...(options.env === undefined ? {} : { env: options.env }),
         ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
+        ...(options.resilience === undefined ? {} : { resilience: options.resilience }),
       },
     );
   if (judge.provider === generation.provider && judge.model === generation.model) {

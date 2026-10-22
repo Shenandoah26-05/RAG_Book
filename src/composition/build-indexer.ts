@@ -9,6 +9,7 @@ import type { Logger } from "../shared/index.js";
 import { Bm25Index, FlatVectorStore, InMemoryChunkStore } from "../strategies/index.js";
 import { buildChunkerRegistry } from "./build-chunkers.js";
 import { buildEmbedder, DEFAULT_EMBEDDING_CACHE_DIR } from "./build-embedder.js";
+import { Resilience } from "./build-resilience.js";
 import { DEFAULT_PROCESSED_DIR } from "./build-ingest.js";
 import { buildChunker } from "./chunker-registry.js";
 import { buildTokenizer } from "./registries.js";
@@ -60,6 +61,7 @@ export async function buildIndexer(options: BuildIndexerOptions = {}): Promise<I
 
   const config = await loadConfig({ argv, env });
   const indexDir = options.indexDir ?? config.vectorStore.dir;
+  const resilience = new Resilience(config.resilience, { logger });
   const tokenizer = buildTokenizer(config.chunking.tokenizer);
   const registry = buildChunkerRegistry(tokenizer);
   const documents = new FileDocumentStore(processedDir);
@@ -76,6 +78,7 @@ export async function buildIndexer(options: BuildIndexerOptions = {}): Promise<I
         env,
         cacheDir,
         logger,
+        resilience,
         ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
       });
 

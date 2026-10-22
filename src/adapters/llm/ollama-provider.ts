@@ -1,6 +1,8 @@
 import { z } from "zod";
 import type { ChatDelta, ChatMessage, ChatOptions, LlmProvider } from "../../core/index.js";
 import { RagError } from "../../shared/index.js";
+import type { RagErrorOptions } from "../../shared/index.js";
+import { retryHints } from "../http-failure.js";
 
 const DEFAULT_IDLE_TIMEOUT_MS = 120_000;
 
@@ -31,8 +33,15 @@ const replyLine = z.object({
   error: z.string().optional(),
 });
 
-const unavailable = (message: string, cause?: unknown): RagError =>
-  new RagError("PROVIDER_UNAVAILABLE", message, cause === undefined ? {} : { cause });
+const unavailable = (
+  message: string,
+  cause?: unknown,
+  hints: Pick<RagErrorOptions, "retryable" | "retryAfterMs"> = {},
+): RagError =>
+  new RagError("PROVIDER_UNAVAILABLE", message, {
+    ...(cause === undefined ? {} : { cause }),
+    ...hints,
+  });
 
 const wholeNumber = (name: string, value: number): void => {
   if (!Number.isInteger(value) || value < 1) {
@@ -141,13 +150,19 @@ export class OllamaProvider implements LlmProvider {
         if (done) break;
       }
       if (!ended) {
-        throw unavailable(`Ollama at ${this.#address} closed the stream before the reply was done`);
+        throw unavailable(
+          `Ollama at ${this.#address} closed the stream before the reply was done`,
+          undefined,
+          { retryable: true },
+        );
       }
     } catch (error) {
       if (caller?.aborted === true) throw caller.reason;
       if (state.stalled) {
         throw unavailable(
           `Ollama at ${this.#address} sent nothing for ${this.#idleTimeoutMs.toString()} ms`,
+          undefined,
+          { retryable: true },
         );
       }
       throw error;
@@ -186,7 +201,7 @@ export class OllamaProvider implements LlmProvider {
     } catch (cause) {
       // an abort is turned into the right error by `chat`, which knows who asked for it
       if (signal.aborted) throw cause;
-      throw unavailable(`Cannot reach Ollama at ${this.#address}`, cause);
+      throw unavailable(`Cannot reach Ollama at ${this.#address}`, cause, { retryable: true });
     }
     if (response.ok) return response;
     const detail = await errorDetail(response);
@@ -194,6 +209,8 @@ export class OllamaProvider implements LlmProvider {
       response.status === 404
         ? `Ollama at ${this.#address} has no model "${this.#model}" (${detail}). Run: ollama pull ${this.#model}`
         : `Ollama at ${this.#address} answered with HTTP ${response.status.toString()} (${detail})`,
+      undefined,
+      retryHints(response),
     );
   }
 
