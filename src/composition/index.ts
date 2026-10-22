@@ -59,3 +59,5 @@ export type {
 } from "./build-searcher.js";
 export { describeFilter, describeSearch, searchToJson } from "./search-summary.js";
 export { DEFAULT_VARIANTS_DIR, listVariants, resolveVariant } from "./variants.js";
+export { buildAnswerJudge } from "./build-answer-judge.js";
+export type { BuildAnswerJudgeOptions } from "./build-answer-judge.js";

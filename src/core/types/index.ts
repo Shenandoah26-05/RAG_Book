@@ -18,3 +18,10 @@ export type {
 export { INDEX_MANIFEST_VERSION } from "./index-manifest.js";
 export type { IndexManifest } from "./index-manifest.js";
 export type { AssembledPrompt, DropReason, DroppedChunk, PromptTemplate } from "./prompt.js";
+export type {
+  AnswerJudgement,
+  ClaimVerdict,
+  FaithfulnessJudgement,
+  JudgeInput,
+  ScoredJudgement,
+} from "./judgement.js";

@@ -25,6 +25,9 @@ export const DEFAULT_CONFIG: RagConfig = {
     contextBudgetTokens: 3000,
     ordering: "sandwich",
   },
+  // Same model as the generator so it works with one model pulled. For real results use another
+  // model: a judge grades its own writing too kindly (see docs/design/rag-082).
+  judge: { provider: "ollama", model: "llama3.2", maxOutputTokens: 700 },
   // 0: do not refuse on score. A good value depends on the scale of the retriever (cosine,
   // fused RRF scores) or reranker in use, so it is set per setup, not guessed here.
   grounding: { minScore: 0 },

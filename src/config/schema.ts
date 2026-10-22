@@ -70,6 +70,13 @@ export const ragConfigSchema = z
       contextBudgetTokens: positiveInt,
       ordering: name,
     }),
+    // The model that scores answers (RAG-082). Its own section so it can differ from the generator:
+    // a model grading its own answers is lenient with them.
+    judge: z.strictObject({
+      provider: name,
+      model: text,
+      maxOutputTokens: positiveInt,
+    }),
     grounding: z.strictObject({
       // 0 never refuses on score; scores are on the scale of the retriever (or reranker) in use
       minScore: z.number("must be a number").min(0, "must be 0 or greater"),
