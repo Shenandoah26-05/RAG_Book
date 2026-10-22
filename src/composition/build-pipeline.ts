@@ -20,7 +20,7 @@ import { buildQueryTransformer, withVariantSearch } from "./build-query-transfor
 import { resolveRerank } from "./build-reranker.js";
 import { buildRetriever } from "./build-retriever.js";
 import { buildChunker } from "./chunker-registry.js";
-import { loadIndex } from "./load-index.js";
+import { openIndex } from "./load-index.js";
 import { buildTokenizer } from "./registries.js";
 import { argvWithVariant } from "./variants.js";
 
@@ -78,13 +78,13 @@ async function readPrompt(dir: string): Promise<PromptTemplate> {
  * @throws ConfigError for a bad config; CONFIG_INVALID for an unknown name or an unreadable prompt;
  *   INVALID_ARGUMENT if there is no index yet; INDEX_CORRUPT if the saved index is damaged
  */
-export async function buildPipeline(options: BuildPipelineOptions = {}): Promise<RagPipeline> {
+export async function buildPipeline(options: BuildPipelineOptions = {}): Promise<GroundedPipeline> {
   return (await buildPipelineWithConfig(options)).pipeline;
 }
 
 /** A pipeline together with the configuration it was built from and the index it answers from. */
 export interface BuiltPipeline {
-  readonly pipeline: RagPipeline;
+  readonly pipeline: GroundedPipeline;
   /** The effective configuration: defaults, file or variant, environment and command line. */
   readonly config: RagConfig;
   /** The folder name of the index in use, `<chunker>__<embedder>`. */
@@ -98,7 +98,6 @@ export interface BuiltPipeline {
 export async function buildPipelineWithConfig(
   options: BuildPipelineOptions = {},
 ): Promise<BuiltPipeline> {
-export async function buildPipeline(options: BuildPipelineOptions = {}): Promise<GroundedPipeline> {
   const {
     argv = process.argv.slice(2),
     env = process.env,
@@ -126,11 +125,11 @@ export async function buildPipeline(options: BuildPipelineOptions = {}): Promise
   const chunker = buildChunker(config.chunking, buildChunkerRegistry(tokenizer));
   const namespace = indexNamespace(chunker.name, embedder.modelId);
   const reader = new FileIndexReader(options.indexDir ?? config.vectorStore.dir);
-  const index = await loadIndex(reader, namespace, logger, config.vectorStore);
+  const index = await openIndex(reader, namespace, config.vectorStore, logger);
 
   // no `rerank` here: the pipeline has a rerank stage of its own
   const retriever = withVariantSearch(
-    buildRetriever({ retrieval: config.retrieval, index, embedder }),
+    buildRetriever(config.retrieval, { index, embedder }),
     config.queryTransform,
   );
   const rerank = resolveRerank(config.rerank, {
@@ -140,16 +139,6 @@ export async function buildPipeline(options: BuildPipelineOptions = {}): Promise
     logger,
     ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
   });
-  const retriever = buildRetriever(config.retrieval, { embedder, index });
-
-  const llm =
-    options.llm ??
-    buildLlmProvider(config.generation, {
-      env,
-      ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
-    });
-  // the "llm" reranker asks the same model that answers
-  const rerank = resolveRerank(config.rerank, { llm, logger });
 
   const { ordering } = config.generation;
   if (!isOrderingName(ordering)) {
@@ -175,8 +164,6 @@ export async function buildPipeline(options: BuildPipelineOptions = {}): Promise
   const pipeline = new RagPipeline({
     // rewriting and HyDE use the answering model, like the "llm" reranker
     transformer: await buildQueryTransformer(config.queryTransform, { llm, promptsDir }),
-  return new RagPipeline({
-    transformer: new IdentityQueryTransformer(),
     retriever,
     reranker: rerank.reranker,
     rerankCandidates: rerank.candidates,
@@ -184,7 +171,7 @@ export async function buildPipeline(options: BuildPipelineOptions = {}): Promise
     llm,
     k: config.retrieval.k,
   });
-  return { pipeline, config, namespace };
   // the guardrails wrap the finished pipeline; the pipeline itself knows nothing about them
-  return new GroundedPipeline({ inner: pipeline, minScore: config.grounding.minScore });
+  const grounded = new GroundedPipeline({ inner: pipeline, minScore: config.grounding.minScore });
+  return { pipeline: grounded, config, namespace };
 }
