@@ -87,3 +87,5 @@ export type {
   ExperimentPlan,
 } from "./build-experiment.js";
 export { describePlan, describeSummary } from "./experiment-summary.js";
+export { buildReport } from "./build-report.js";
+export type { BuildReportOptions, Report } from "./build-report.js";

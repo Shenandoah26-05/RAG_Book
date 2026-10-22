@@ -17,6 +17,7 @@ import { makeDocId } from "../shared/index.js";
 import { Bm25Index } from "../strategies/index.js";
 import { makeDocument } from "../testing/make-document.testing.js";
 import { buildExperiment, indexDirFor } from "./build-experiment.js";
+import { buildReport } from "./build-report.js";
 import type { BuildExperimentOptions, EnsureIndex } from "./build-experiment.js";
 import { DEFAULT_CONFIG } from "../config/index.js";
 
@@ -433,6 +434,32 @@ describe("buildExperiment: indexes", () => {
     );
     const summary = await experiment.run();
     expect(summary.variants[0]?.error).toMatch(/maxToken/);
+  });
+});
+
+// The report reads the files the runner writes. Checking it against real output, not hand-made
+// fixtures, is what keeps the two from drifting apart.
+describe("buildExperiment: the report reads what the runner wrote", () => {
+  it.each([false, true])("with generation %s", async (generation) => {
+    const experiment = await buildExperiment(
+      await options({
+        name: "reported",
+        generation,
+        variants: [
+          { name: "dense", config: { retrieval: { strategy: "dense", k: 2 } } },
+          { name: "bm25", config: { retrieval: { strategy: "bm25", k: 2 } } },
+        ],
+      }),
+    );
+    await experiment.run();
+    const report = await buildReport({ target: experiment.location });
+
+    expect(report.markdown).toContain("# Experiment reported: A/B report");
+    expect(report.markdown).toContain("### `dense`");
+    expect(report.markdown).toContain("### `bm25`");
+    // the configs come from the run's own folder
+    expect(report.markdown).toContain('"strategy": "bm25"');
+    expect(report.markdown.includes("correctness")).toBe(generation);
   });
 });
 
