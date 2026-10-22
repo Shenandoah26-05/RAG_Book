@@ -20,5 +20,6 @@ export type { RelevanceScorer } from "./relevance-scorer.js";
 export type { RerankOptions, Reranker } from "./reranker.js";
 export type { RetrieveOptions, Retriever } from "./retriever.js";
 export type { SectionDetector } from "./section-detector.js";
+export type { ByteRange, SourceFile, SourceFileStore } from "./source-file-store.js";
 export type { Tokenizer } from "./tokenizer.js";
 export type { ExportableVectorStore, VectorStore } from "./vector-store.js";

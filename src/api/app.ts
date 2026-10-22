@@ -1,4 +1,9 @@
-import { askRequestSchema, chunkRequestSchema, pageRequestSchema } from "@rag-book/api-contract";
+import {
+  askRequestSchema,
+  bookRequestSchema,
+  chunkRequestSchema,
+  pageRequestSchema,
+} from "@rag-book/api-contract";
 import type { ErrorBody, ErrorResponse } from "@rag-book/api-contract";
 import type { ZodType } from "zod";
 import { Hono } from "hono";
@@ -12,8 +17,10 @@ import { noopLogger } from "../shared/index.js";
 import type { Logger } from "../shared/index.js";
 import { describeError, invalidRequest, notFound } from "./errors.js";
 import type { ErrorAnswer } from "./errors.js";
+import { parseRange } from "./range.js";
 import {
   toMetadataFilter,
+  toWireBook,
   toWireChunk,
   toWireCitation,
   toWirePage,
@@ -36,6 +43,21 @@ export interface AppOptions {
    */
   readonly allowedOrigins?: readonly string[];
   readonly logger?: Logger;
+}
+
+/** An async iterable of bytes as a response body. Cancelling the body stops the iteration. */
+function toWebStream(source: AsyncIterable<Uint8Array>): ReadableStream<Uint8Array> {
+  const iterator = source[Symbol.asyncIterator]();
+  return new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      const next = await iterator.next();
+      if (next.done === true) controller.close();
+      else controller.enqueue(next.value);
+    },
+    async cancel() {
+      await iterator.return?.();
+    },
+  });
 }
 
 /** Writes a failure as JSON: `{ "error": { "code", "message" } }`. */
@@ -91,7 +113,9 @@ export function createApp(services: ApiServices, options: AppOptions = {}): Hono
     cors({
       origin: [...(options.allowedOrigins ?? DEFAULT_ALLOWED_ORIGINS)],
       allowMethods: ["GET", "POST", "OPTIONS"],
-      allowHeaders: ["Content-Type"],
+      // `Range` is how pdf.js asks for the part of the PDF it needs; the others let it read the answer
+      allowHeaders: ["Content-Type", "Range"],
+      exposeHeaders: ["Content-Range", "Content-Length", "Accept-Ranges", "ETag"],
       maxAge: 600,
     }),
   );
@@ -201,6 +225,50 @@ export function createApp(services: ApiServices, options: AppOptions = {}): Hono
     },
   );
 
+  /**
+   * The processed document a reader asks about: the one named by `?doc=`, or the only one the index
+   * holds. Says what is wrong when there is none, or several and none is named.
+   */
+  const readerDocument = async (
+    docParam: string | undefined,
+  ): Promise<{ ok: true; doc: ParsedDocument } | { ok: false; answer: ErrorAnswer }> => {
+    const ids = services.documentIds;
+    let id: DocId;
+    if (docParam !== undefined) {
+      const known = ids.find((candidate) => candidate === docParam);
+      if (known === undefined) {
+        return { ok: false, answer: notFound(`The index holds no document ${docParam}.`) };
+      }
+      id = known;
+    } else if (ids.length === 1 && ids[0] !== undefined) {
+      id = ids[0];
+    } else if (ids.length === 0) {
+      return { ok: false, answer: notFound("The index holds no document.") };
+    } else {
+      return {
+        ok: false,
+        answer: invalidRequest(
+          `The index holds ${ids.length.toString()} documents: say which with ?doc=<id> (${ids.join(", ")}).`,
+        ),
+      };
+    }
+
+    let loaded: ParsedDocument | undefined;
+    try {
+      loaded = await document(id);
+    } catch (error) {
+      logger.error("a document could not be read", { error: String(error) });
+      return { ok: false, answer: describeError(error) };
+    }
+    if (loaded === undefined) {
+      return {
+        ok: false,
+        answer: notFound(`The document ${id} has not been processed. Run: pnpm ingest <book.pdf>`),
+      };
+    }
+    return { ok: true, doc: loaded };
+  };
+
   // ---- GET /pages/:n ----
 
   app.get("/pages/:n", async (c) => {
@@ -208,46 +276,78 @@ export function createApp(services: ApiServices, options: AppOptions = {}): Hono
     if (!request.ok) return fail(c, request.answer);
     const { n, doc } = request.value;
 
-    const ids = services.documentIds;
-    let id: DocId;
-    if (doc !== undefined) {
-      const known = ids.find((candidate) => candidate === doc);
-      if (known === undefined) return fail(c, notFound(`The index holds no document ${doc}.`));
-      id = known;
-    } else if (ids.length === 1 && ids[0] !== undefined) {
-      id = ids[0];
-    } else if (ids.length === 0) {
-      return fail(c, notFound("The index holds no document."));
-    } else {
+    const found = await readerDocument(doc);
+    if (!found.ok) return fail(c, found.answer);
+    const page = found.doc.pages.find((candidate) => candidate.number === n);
+    if (page === undefined) {
       return fail(
         c,
-        invalidRequest(
-          `The index holds ${ids.length.toString()} documents: say which with ?doc=<id> (${ids.join(", ")}).`,
+        notFound(
+          `The book has no page ${n.toString()} (it has ${found.doc.pageCount.toString()}).`,
+        ),
+      );
+    }
+    return c.json(toWirePage(found.doc, page));
+  });
+
+  // ---- GET /book and GET /book/pdf ----
+
+  app.get("/book", async (c) => {
+    const request = check(bookRequestSchema, { doc: c.req.query("doc") });
+    if (!request.ok) return fail(c, request.answer);
+    const found = await readerDocument(request.value.doc);
+    if (!found.ok) return fail(c, found.answer);
+    const pdf = await services.sources.find(found.doc.sha256);
+    return c.json(toWireBook(found.doc, pdf !== undefined));
+  });
+
+  // The PDF is served in ranges: pdf.js asks for the parts it needs, so a large book shows its first
+  // page before the rest has arrived. The file is the one whose contents hash to the document's
+  // `sha256`: the text, page numbers and character spans the API reports were taken from exactly
+  // this file, and a request has no path to name.
+  app.get("/book/pdf", async (c) => {
+    const request = check(bookRequestSchema, { doc: c.req.query("doc") });
+    if (!request.ok) return fail(c, request.answer);
+    const found = await readerDocument(request.value.doc);
+    if (!found.ok) return fail(c, found.answer);
+    const file = await services.sources.find(found.doc.sha256);
+    if (file === undefined) {
+      return fail(
+        c,
+        notFound(
+          "The PDF this book was made from is not available. Put it in data/raw (or pass --raw-dir).",
         ),
       );
     }
 
-    let loaded: ParsedDocument | undefined;
-    try {
-      loaded = await document(id);
-    } catch (error) {
-      logger.error("a page could not be read", { error: String(error) });
-      return fail(c, describeError(error));
+    const headers: Record<string, string> = {
+      "Content-Type": file.mediaType,
+      "Accept-Ranges": "bytes",
+      // the document id is the hash of the file, so the file behind it never changes
+      ETag: `"${found.doc.sha256}"`,
+      "Cache-Control": "private, max-age=3600",
+    };
+    const requested = parseRange(c.req.header("range"), file.size);
+    if (requested.kind === "unsatisfiable") {
+      return new Response(null, {
+        status: 416,
+        headers: { ...headers, "Content-Range": `bytes */${file.size.toString()}` },
+      });
     }
-    if (loaded === undefined) {
-      return fail(
-        c,
-        notFound(`The document ${id} has not been processed. Run: pnpm ingest <book.pdf>`),
-      );
-    }
-    const page = loaded.pages.find((candidate) => candidate.number === n);
-    if (page === undefined) {
-      return fail(
-        c,
-        notFound(`The book has no page ${n.toString()} (it has ${loaded.pageCount.toString()}).`),
-      );
-    }
-    return c.json(toWirePage(loaded, page));
+    const range = requested.kind === "partial" ? requested.range : undefined;
+    const length = range === undefined ? file.size : range.end - range.start + 1;
+    return new Response(toWebStream(file.read(range)), {
+      status: range === undefined ? 200 : 206,
+      headers: {
+        ...headers,
+        "Content-Length": length.toString(),
+        ...(range === undefined
+          ? {}
+          : {
+              "Content-Range": `bytes ${range.start.toString()}-${range.end.toString()}/${file.size.toString()}`,
+            }),
+      },
+    });
   });
 
   // ---- GET /chunks/:id ----

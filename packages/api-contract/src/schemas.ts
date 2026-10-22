@@ -247,3 +247,39 @@ export const askEventSchema = z.discriminatedUnion("event", [
 ]);
 export type AskEvent = z.infer<typeof askEventSchema>;
 export type AskEventName = AskEvent["event"];
+
+// ---- the book, for the reader (RAG-102) ----
+
+/** `GET /book`: the document in the query when the index holds several. */
+export const bookRequestSchema = z.strictObject({ doc: docIdSchema.optional() });
+export type BookRequest = z.infer<typeof bookRequestSchema>;
+
+/**
+ * One heading of the book and what is under it, as the table of contents shows it. `level` is the
+ * depth (1 for a chapter); the page range covers the heading's whole section, subsections included.
+ */
+export const wireOutlineEntrySchema = z.strictObject({
+  title: z.string(),
+  level: z.number().int().min(1),
+  pageStart: page,
+  pageEnd: page,
+  get children() {
+    return z.array(wireOutlineEntrySchema);
+  },
+});
+export type WireOutlineEntry = z.infer<typeof wireOutlineEntrySchema>;
+
+/** `GET /book`: what a reader needs to open the book. */
+export const bookResponseSchema = z.strictObject({
+  docId: docIdSchema,
+  title: z.string(),
+  pageCount: page,
+  /**
+   * Whether the PDF itself can be fetched from `GET /book/pdf`. When false the pages are still
+   * readable as text from `GET /pages/:n`, but cannot be drawn as in the original.
+   */
+  pdf: z.boolean(),
+  /** The section tree. Empty when no headings were detected in the book. */
+  outline: z.array(wireOutlineEntrySchema),
+});
+export type BookResponse = z.infer<typeof bookResponseSchema>;
