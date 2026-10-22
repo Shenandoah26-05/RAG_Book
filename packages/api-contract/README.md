@@ -2,7 +2,17 @@
 
 The shapes that cross the HTTP boundary between the API (`src/api/`) and the web app (`apps/web`):
 zod schemas for requests, and the types of responses and stream events (RAG-101).
-Chosen in [ADR-0006](../../docs/adr/0006-web-stack-and-workspace.md). **No code yet.**
+Chosen in [ADR-0006](../../docs/adr/0006-web-stack-and-workspace.md). Built in RAG-101.
+
+## What is in it
+
+| File             | Holds                                                                                               |
+| ---------------- | --------------------------------------------------------------------------------------------------- |
+| `src/schemas.ts` | Request schemas (`askRequestSchema`, ...), response and error shapes, and the events of `POST /ask` |
+| `src/sse.ts`     | `readAskEvents(body)`: reads the answer stream with `fetch`, for the browser (and for the tests)    |
+
+Every type is `z.infer` of a schema, so the schema is the one definition. The API validates requests
+with it, and a client can validate responses with it.
 
 ## Why it exists
 

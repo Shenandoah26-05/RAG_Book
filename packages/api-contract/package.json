@@ -1,0 +1,13 @@
+{
+  "name": "@rag-book/api-contract",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The wire format of the HTTP API: request schemas and the types of responses and stream events",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "zod": "^4.6.5"
+  }
+}

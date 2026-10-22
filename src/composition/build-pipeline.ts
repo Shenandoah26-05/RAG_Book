@@ -22,6 +22,7 @@ import { resolveRerank } from "./build-reranker.js";
 import { buildRetriever } from "./build-retriever.js";
 import { buildChunker } from "./chunker-registry.js";
 import { openIndex } from "./load-index.js";
+import type { LoadedIndex } from "./load-index.js";
 import { buildTokenizer } from "./registries.js";
 import { argvWithVariant } from "./variants.js";
 
@@ -90,6 +91,8 @@ export interface BuiltPipeline {
   readonly config: RagConfig;
   /** The folder name of the index in use, `<chunker>__<embedder>`. */
   readonly namespace: string;
+  /** The index the pipeline answers from, for callers that also serve its chunks (the API). */
+  readonly index: LoadedIndex;
 }
 
 /**
@@ -179,5 +182,5 @@ export async function buildPipelineWithConfig(
   });
   // the guardrails wrap the finished pipeline; the pipeline itself knows nothing about them
   const grounded = new GroundedPipeline({ inner: pipeline, minScore: config.grounding.minScore });
-  return { pipeline: grounded, config, namespace };
+  return { pipeline: grounded, config, namespace, index };
 }
