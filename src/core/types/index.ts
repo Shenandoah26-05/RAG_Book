@@ -26,3 +26,12 @@ export type {
   JudgeInput,
   ScoredJudgement,
 } from "./judgement.js";
+export type {
+  ExperimentSummary,
+  GenerationScores,
+  QuestionResult,
+  ResultProvenance,
+  RetrievalScores,
+  RetrievedRecord,
+  VariantSummary,
+} from "./experiment.js";

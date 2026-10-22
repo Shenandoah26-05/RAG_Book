@@ -1,0 +1,11 @@
+{
+  "name": "answers",
+  "description": "End to end: generate answers and score them with the judge, for the default setup and a reranked one",
+  "dataset": "evals/datasets/v1.jsonl",
+  "generation": true,
+  "variants": [
+    { "name": "default", "config": {} },
+    { "name": "reranked", "config": { "rerank": { "enabled": true } } },
+    { "name": "k3", "config": { "retrieval": { "k": 3 } } }
+  ]
+}

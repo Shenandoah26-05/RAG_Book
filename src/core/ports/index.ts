@@ -1,5 +1,6 @@
 // Public API of src/core/ports. Named exports only.
 export type { AnswerJudge } from "./answer-judge.js";
+export type { ExperimentStore } from "./experiment-store.js";
 export type { Chunker } from "./chunker.js";
 export type { ChunkStore } from "./chunk-store.js";
 export type { Cleaner } from "./cleaner.js";

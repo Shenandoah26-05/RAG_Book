@@ -1,0 +1,13 @@
+{
+  "name": "chunkers",
+  "description": "Chunking strategies and sizes, each with its own index, retrieved the same way",
+  "dataset": "evals/datasets/v1.jsonl",
+  "generation": false,
+  "base": {
+    "retrieval": { "strategy": "hybrid", "k": 5 }
+  },
+  "matrix": {
+    "chunking.strategy": ["fixed-size", "recursive", "structure-aware"],
+    "chunking.maxTokens": [200, 400]
+  }
+}

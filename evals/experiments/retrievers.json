@@ -1,0 +1,13 @@
+{
+  "name": "retrievers",
+  "description": "Dense, keyword and hybrid retrieval, with and without reranking, on the same index",
+  "dataset": "evals/datasets/v1.jsonl",
+  "generation": false,
+  "base": {
+    "chunking": { "strategy": "recursive" }
+  },
+  "matrix": {
+    "retrieval.strategy": ["dense", "bm25", "hybrid"],
+    "rerank.enabled": [false, true]
+  }
+}
