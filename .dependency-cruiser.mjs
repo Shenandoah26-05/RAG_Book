@@ -1,12 +1,19 @@
-// Layer rules for src/. See docs/architecture.md for the diagram and the reasoning.
+// Layer rules for src/, and boundary rules for the workspace around it (ADR-0006).
+// See docs/architecture.md for the diagram and the reasoning.
 // Dependencies point downwards only:
-//   cli -> composition -> pipeline/eval -> strategies/adapters -> core
+//   cli | api -> composition -> pipeline/eval -> strategies/adapters -> core
 // `shared` (logger, errors, trace) and `config` sit beside the layers; see the rules below.
+// Outside src/: apps/web (browser) and packages/api-contract (wire format) never import the library.
 
 const IMPL = "^src/(adapters|strategies)/";
 const TEST_FILE = "\\.test\\.ts$";
 /** Shared helpers for tests (src/testing). Tests may use them; production code may not. */
 const TESTING = "^src/testing/";
+/** The wire format shared by the API and the web app: by folder, and by workspace package name. */
+const CONTRACT = "^(packages/api-contract|node_modules/@rag-book/api-contract)/";
+/** Browser-side code: it must run without Node. Build config and tests may use Node. */
+const BROWSER_CODE = "^(apps/web|packages/api-contract)/";
+const NODE_ONLY_FILES = ["(^|/)vite\\.config\\.", TEST_FILE];
 
 /** @type {import('dependency-cruiser').IConfiguration} */
 export default {
@@ -97,6 +104,59 @@ export default {
       to: { path: "^src/", pathNot: ["^src/(core|shared)/", TESTING] },
     },
     {
+      name: "web-never-imports-the-library",
+      comment:
+        "The browser bundle must not pull in Node code. Types and schemas it needs come from packages/api-contract.",
+      severity: "error",
+      from: { path: "^apps/web/" },
+      to: { path: "^src/" },
+    },
+    {
+      name: "web-and-contract-are-browser-code",
+      comment:
+        "If it would not run in a browser it does not belong in apps/web or packages/api-contract. Build config and tests are exempt.",
+      severity: "error",
+      from: { path: BROWSER_CODE, pathNot: NODE_ONLY_FILES },
+      to: { dependencyTypes: ["core"] },
+    },
+    {
+      name: "contract-imports-nothing",
+      comment:
+        "Both the API and the web app depend on the contract, so it can depend on neither (or on the library).",
+      severity: "error",
+      from: { path: "^packages/api-contract/" },
+      to: { path: "^(src|apps)/" },
+    },
+    {
+      name: "library-never-imports-apps",
+      comment: "Apps depend on the library, never the reverse.",
+      severity: "error",
+      from: { path: "^src/" },
+      to: { path: "^apps/" },
+    },
+    {
+      name: "only-the-api-uses-the-contract",
+      comment: "Domain types stay independent of the wire format: only src/api maps between them.",
+      severity: "error",
+      from: { path: "^src/", pathNot: "^src/api/" },
+      to: { path: CONTRACT },
+    },
+    {
+      name: "entry-points-are-leaves",
+      comment:
+        "src/api and src/cli call the library; the library never calls an entry point. They do not import each other.",
+      severity: "error",
+      from: { path: "^src/", pathNot: ["^src/api/", "^src/cli/"] },
+      to: { path: "^src/(api|cli)/" },
+    },
+    {
+      name: "entry-points-do-not-import-each-other",
+      comment: "Share code through composition, not between entry points.",
+      severity: "error",
+      from: { path: "^src/api/" },
+      to: { path: "^src/cli/" },
+    },
+    {
       name: "no-circular",
       comment: "Circular dependencies make the layering meaningless.",
       severity: "error",
@@ -109,7 +169,7 @@ export default {
       severity: "warn",
       from: {
         orphan: true,
-        pathNot: ["(^|/)index\\.ts$", TEST_FILE, "\\.d\\.ts$", "^src/cli/"],
+        pathNot: ["(^|/)index\\.ts$", TEST_FILE, "\\.d\\.ts$", "^src/(cli|api)/"],
       },
       to: {},
     },
