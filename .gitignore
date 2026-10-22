@@ -5,3 +5,5 @@ coverage
 *.log
 # raw books, processed documents, indexes and caches are generated; keep them out of git
 data/
+# experiment runs are generated; commit a result by copying it somewhere deliberate
+evals/results/
