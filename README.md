@@ -21,24 +21,25 @@ pnpm test
 
 ## Scripts
 
-| Script                          | What it does                                                    |
-| ------------------------------- | --------------------------------------------------------------- |
-| `pnpm dev`                      | Run `src/index.ts` with tsx in watch mode                       |
-| `pnpm build`                    | Compile to `dist/` with tsc                                     |
-| `pnpm typecheck`                | Type-check without emitting (strict mode)                       |
-| `pnpm lint`                     | ESLint                                                          |
-| `pnpm test`                     | Run vitest once                                                 |
-| `pnpm format`                   | Format everything with Prettier                                 |
-| `pnpm compare:extractors <pdf>` | Compare the two PDF loaders on a file (ADR-0002)                |
-| `pnpm ingest <pdf> [--force]`   | Turn a PDF into a processed document in `data/processed/`       |
-| `pnpm chunks <pdf or docId>`    | Chunk a processed document; print stats, write the chunks file  |
-| `pnpm export:markdown <pdf>`    | Load, clean and find sections; print an outline, write Markdown |
-| `pnpm run doctor`               | Check that Ollama is running and has the models                 |
-| `pnpm deps:check`               | Check the layer rules in `docs/architecture.md`                 |
-| `pnpm eval:validate <pdf>`      | Check the evaluation dataset against the ingested book          |
-| `pnpm experiment <file>`        | Run the variants of an experiment over the evaluation dataset   |
-| `pnpm eval:smoke`               | Retrieval regression check: 10 questions, fails if recall drops |
-| `pnpm report <run>`             | Turn an experiment run into a Markdown A/B report               |
+| Script                          | What it does                                                                                     |
+| ------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `pnpm dev`                      | Run `src/index.ts` with tsx in watch mode                                                        |
+| `pnpm build`                    | Compile to `dist/` with tsc                                                                      |
+| `pnpm typecheck`                | Type-check without emitting (strict mode)                                                        |
+| `pnpm lint`                     | ESLint                                                                                           |
+| `pnpm test`                     | Run vitest once                                                                                  |
+| `pnpm format`                   | Format everything with Prettier                                                                  |
+| `pnpm compare:extractors <pdf>` | Compare the two PDF loaders on a file (ADR-0002)                                                 |
+| `pnpm ingest <pdf> [--force]`   | Turn a PDF into a processed document in `data/processed/`                                        |
+| `pnpm chunks <pdf or docId>`    | Chunk a processed document; print stats, write the chunks file                                   |
+| `pnpm export:markdown <pdf>`    | Load, clean and find sections; print an outline, write Markdown                                  |
+| `pnpm run doctor`               | Check that Ollama is running and has the models                                                  |
+| `pnpm deps:check`               | Check the layer rules in `docs/architecture.md`                                                  |
+| `pnpm eval:validate <pdf>`      | Check the evaluation dataset against the ingested book                                           |
+| `pnpm experiment <file>`        | Run the variants of an experiment over the evaluation dataset                                    |
+| `pnpm api`                      | Serve the pipeline over HTTP on 127.0.0.1:8787 (`POST /ask`, `GET /pages/:n`, `GET /chunks/:id`) |
+| `pnpm eval:smoke`               | Retrieval regression check: 10 questions, fails if recall drops                                  |
+| `pnpm report <run>`             | Turn an experiment run into a Markdown A/B report                                                |
 
 ## Ingesting a book
 
