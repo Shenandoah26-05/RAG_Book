@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { Embedder } from "../../core/index.js";
+import { retryHints } from "../http-failure.js";
 import { RagError } from "../../shared/index.js";
 
 /** all-minilm is a Sentence-BERT model that gives 384 numbers per text. */
@@ -155,9 +156,7 @@ export class OllamaEmbedder implements Embedder {
       const error = new RagError(
         "PROVIDER_UNAVAILABLE",
         `Cannot reach Ollama at ${this.#address}`,
-        {
-          cause,
-        },
+        { cause, retryable: true },
       );
       return { ok: false, retry: true, error };
     }
@@ -170,6 +169,7 @@ export class OllamaEmbedder implements Embedder {
         missing
           ? `Ollama at ${this.#address} has no model "${this.#model}" (${detail}). Run: ollama pull ${this.#model}`
           : `Ollama at ${this.#address} answered with HTTP ${response.status.toString()} (${detail})`,
+        retryHints(response),
       );
       return { ok: false, retry: response.status >= 500 || response.status === 429, error };
     }

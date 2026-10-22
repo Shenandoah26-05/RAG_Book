@@ -8,6 +8,7 @@ import type { Logger, StageRecord } from "../shared/index.js";
 import { ObservedRetriever } from "../strategies/index.js";
 import { buildEmbedder, DEFAULT_EMBEDDING_CACHE_DIR } from "./build-embedder.js";
 import { buildRerankingRetriever } from "./build-reranker.js";
+import { Resilience } from "./build-resilience.js";
 import { buildRetriever, usesEmbedder } from "./build-retriever.js";
 import { argvWithVariant } from "./variants.js";
 import { openIndex } from "./load-index.js";
@@ -122,12 +123,14 @@ export async function buildSearcher(options: BuildSearcherOptions = {}): Promise
         logger,
       );
 
+      const resilience = new Resilience(config.resilience, { logger });
       const embedder = usesEmbedder(config.retrieval.strategy)
         ? buildEmbedder(index.manifest.embedder.modelId, {
             batchSize: index.manifest.embedder.batchSize,
             env,
             cacheDir,
             logger,
+            resilience,
             ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
           })
         : undefined;

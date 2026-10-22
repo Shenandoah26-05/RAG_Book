@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { RagError } from "../../shared/index.js";
+import { retryHints } from "../http-failure.js";
 
 export const DEFAULT_OPENAI_BASE_URL = "https://api.openai.com/v1";
 
@@ -68,6 +69,7 @@ export class OpenAiEndpoint {
   unreachable(cause: unknown): RagError {
     return new RagError("PROVIDER_UNAVAILABLE", `Cannot reach the server at ${this.baseUrl}`, {
       cause,
+      retryable: true,
     });
   }
 
@@ -95,17 +97,20 @@ export class OpenAiEndpoint {
             ? "Check OPENAI_API_KEY."
             : "It wants an API key: set OPENAI_API_KEY in the environment."
         }`,
+        { retryable: false },
       );
     }
     if (response.status === 404) {
       return new RagError(
         "PROVIDER_UNAVAILABLE",
         `The server at ${this.baseUrl} has no model "${model}" or no such endpoint (${detail}). Check the model name and OPENAI_BASE_URL`,
+        { retryable: false },
       );
     }
     return new RagError(
       "PROVIDER_UNAVAILABLE",
       `The server at ${this.baseUrl} answered with HTTP ${status} (${detail})`,
+      retryHints(response),
     );
   }
 }

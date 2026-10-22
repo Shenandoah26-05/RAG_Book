@@ -30,6 +30,7 @@ import { createConsoleLogger, makeDocId, RagError } from "../shared/index.js";
 import type { Logger } from "../shared/index.js";
 import { buildAnswerJudge } from "./build-answer-judge.js";
 import { buildIndexer } from "./build-indexer.js";
+import { Resilience } from "./build-resilience.js";
 import { DEFAULT_PROCESSED_DIR } from "./build-ingest.js";
 import { buildPipelineWithConfig } from "./build-pipeline.js";
 import { currentGitCommit } from "./git-commit.js";
@@ -201,6 +202,7 @@ export async function buildExperiment(options: BuildExperimentOptions): Promise<
     ? buildAnswerJudge(baseConfig, {
         env,
         logger,
+        resilience: new Resilience(baseConfig.resilience, { logger }),
         ...(options.judgeLlm === undefined ? {} : { llm: options.judgeLlm }),
         ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
         ...(options.promptsDir === undefined ? {} : { promptsDir: options.promptsDir }),
