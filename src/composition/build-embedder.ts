@@ -11,6 +11,7 @@ import {
 import type { Embedder } from "../core/index.js";
 import { RagError } from "../shared/index.js";
 import type { Logger } from "../shared/index.js";
+import { MeteredEmbedder } from "../strategies/index.js";
 import type { Resilience } from "./build-resilience.js";
 
 /** Where cached vectors go unless told otherwise. */
@@ -97,7 +98,10 @@ export function buildEmbedder(spec: string, options: BuildEmbedderOptions): Embe
     );
   }
   return new CachingEmbedder(
-    options.resilience === undefined ? inner : options.resilience.embedder(inner),
+    // metered inside the cache, so a vector that was cached is not a call and costs nothing
+    new MeteredEmbedder(
+      options.resilience === undefined ? inner : options.resilience.embedder(inner),
+    ),
     new FileEmbeddingCache(options.cacheDir ?? DEFAULT_EMBEDDING_CACHE_DIR),
     options.logger,
   );

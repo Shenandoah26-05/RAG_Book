@@ -23,7 +23,8 @@ export interface TraceSnapshot {
 /** An open stage. Close it exactly once, with `end` or `fail`. */
 export interface StageHandle {
   end(summary?: TraceSummary): void;
-  fail(error: unknown): void;
+  /** `summary` keeps what is known about a stage that failed, e.g. which model it called. */
+  fail(error: unknown, summary?: TraceSummary): void;
 }
 
 /**
@@ -63,8 +64,8 @@ export class Trace {
       end: (summary = {}) => {
         close("ok", summary);
       },
-      fail: (error) => {
-        close("error", {}, error instanceof Error ? error.message : String(error));
+      fail: (error, summary = {}) => {
+        close("error", summary, error instanceof Error ? error.message : String(error));
       },
     };
   }

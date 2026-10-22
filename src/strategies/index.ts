@@ -9,3 +9,4 @@ export * from "./prompting/index.js";
 export * from "./structure/index.js";
 export * from "./query-transform/index.js";
 export * from "./resilience/index.js";
+export * from "./usage/index.js";

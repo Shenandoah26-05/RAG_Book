@@ -25,6 +25,17 @@ const retrievalScores = z.object({
   ndcg: score,
 });
 
+const usage = z.object({
+  calls: count,
+  failedCalls: count,
+  promptTokens: count,
+  outputTokens: count,
+  embeddedTokens: count,
+  modelMs: ms,
+  cost: z.number().nonnegative(),
+  unpricedTokens: count,
+});
+
 const questionResult = z.object({
   experiment: z.string(),
   variant: z.string(),
@@ -59,6 +70,8 @@ const questionResult = z.object({
     .optional(),
   latencyMs: z.object({ retrieval: ms, generation: ms.optional(), judge: ms.optional() }),
   tokens: z.object({ prompt: count.optional(), output: count.optional() }).optional(),
+  usage: usage.optional(),
+  judgeUsage: usage.optional(),
   error: z.string().optional(),
 });
 
@@ -93,6 +106,29 @@ const variantSummary = z.object({
     generationP95: ms.optional(),
   }),
   tokens: z.object({ prompt: count, output: count }),
+  cost: z
+    .object({
+      currency: z.string(),
+      total: z.number().nonnegative(),
+      per100Questions: z.number().nonnegative(),
+      calls: count,
+      promptTokens: count,
+      outputTokens: count,
+      embeddedTokens: count,
+      modelMs: ms,
+      unpricedTokens: count,
+      judge: z
+        .object({
+          total: z.number().nonnegative(),
+          per100Questions: z.number().nonnegative(),
+          calls: count,
+          promptTokens: count,
+          outputTokens: count,
+          unpricedTokens: count,
+        })
+        .optional(),
+    })
+    .optional(),
   error: z.string().optional(),
 });
 

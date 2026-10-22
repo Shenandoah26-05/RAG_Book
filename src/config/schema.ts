@@ -11,6 +11,7 @@ const positiveInt = z
   .int("must be a whole number")
   .positive("must be greater than 0");
 const flag = z.boolean("must be true or false");
+const price = z.number("must be a number").nonnegative("must be 0 or greater");
 const wholeNumber = z
   .number("must be a number")
   .int("must be a whole number")
@@ -87,6 +88,15 @@ export const ragConfigSchema = z
       strategy: name,
       candidates: positiveInt,
       concurrency: positiveInt,
+    }),
+    /**
+     * What the models cost (RAG-093), by model id as it appears in a trace, e.g.
+     * "openai-compatible:gpt-4o-mini". A model that is not listed has no price: its calls are counted
+     * in tokens and shown as unpriced. A local model can be listed at 0 to say it is free.
+     */
+    pricing: z.strictObject({
+      currency: text,
+      models: z.record(text, z.strictObject({ inputPerMillion: price, outputPerMillion: price })),
     }),
     resilience: z.strictObject({ generation: resilience, embedding: resilience }),
     queryTransform: z.strictObject({

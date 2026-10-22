@@ -1,7 +1,9 @@
 import type { RagConfig } from "../config/index.js";
 import type { RagPipeline } from "../pipeline/index.js";
+import { usageOf } from "../shared/index.js";
 import { ConversationHistory } from "../strategies/index.js";
 import { CHAT_HELP, describeChatConfig, describeSources, describeTrace } from "./chat-format.js";
+import { describeUsage } from "./usage-format.js";
 
 /** Where a session writes. The terminal wires these to standard output and standard error. */
 export interface ChatOutput {
@@ -141,6 +143,12 @@ export class ChatSession {
         this.#history.add({ question, answer: reply });
       }
       out.write(`\n\n${describeSources(answer.prompt, reply)}\n`);
+      // what the answer cost, from the model calls recorded on its trace
+      const usage = describeUsage(
+        usageOf(answer.trace.snapshot().stages),
+        this.#options.config.pricing,
+      );
+      if (usage !== undefined) out.write(`${usage}\n`);
     } catch (error) {
       if (controller.signal.aborted) {
         out.write("\n[stopped]\n");

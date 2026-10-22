@@ -26,7 +26,7 @@ import type {
   VariantFactory,
   VariantSystem,
 } from "../eval/index.js";
-import { createConsoleLogger, makeDocId, RagError } from "../shared/index.js";
+import { createConsoleLogger, makeDocId, RagError, usageOf } from "../shared/index.js";
 import type { Logger } from "../shared/index.js";
 import { buildAnswerJudge } from "./build-answer-judge.js";
 import { buildIndexer } from "./build-indexer.js";
@@ -271,7 +271,9 @@ export async function buildExperiment(options: BuildExperimentOptions): Promise<
             ...(typeof ground?.["refusal"] === "string" ? { refusal: ground["refusal"] } : {}),
             latencyMs: { retrieval: retrievalMs },
           };
-          if (!askOptions.generate) return result;
+          // every model and embedder call made for the question, read from its trace once it is over
+          const usage = (): SystemAnswer["usage"] => usageOf(answer.trace.snapshot().stages);
+          if (!askOptions.generate) return { ...result, usage: usage() };
 
           const generationStarted = performance.now();
           let text = "";
@@ -289,6 +291,7 @@ export async function buildExperiment(options: BuildExperimentOptions): Promise<
             ...result,
             answer: text,
             ...(tokens === undefined ? {} : { tokens }),
+            usage: usage(),
             latencyMs: {
               retrieval: retrievalMs,
               generation: performance.now() - generationStarted,
@@ -322,6 +325,7 @@ export async function buildExperiment(options: BuildExperimentOptions): Promise<
         gold,
         factory,
         ...(judge === undefined ? {} : { judge }),
+        prices: baseConfig.pricing,
         store,
         gitCommit,
         now,

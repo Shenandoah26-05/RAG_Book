@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
-import { OllamaProvider, OpenAiChatProvider } from "../adapters/index.js";
 import { DEFAULT_CONFIG } from "../config/index.js";
 import { RagError } from "../shared/index.js";
+import { MeteredProvider } from "../strategies/index.js";
 import { buildLlmProvider, llmProviderNames } from "./build-llm-provider.js";
 
 const doneLine = `${JSON.stringify({ done: true, done_reason: "stop" })}\n`;
@@ -13,7 +13,8 @@ describe("buildLlmProvider", () => {
 
   it("builds the Ollama provider for the default configuration", () => {
     const provider = buildLlmProvider(DEFAULT_CONFIG.generation);
-    expect(provider).toBeInstanceOf(OllamaProvider);
+    // the provider is metered (RAG-093); what it sends is checked in the tests below
+    expect(provider).toBeInstanceOf(MeteredProvider);
     expect(provider.modelId).toBe("ollama:llama3.2");
   });
 
@@ -53,7 +54,7 @@ describe("buildLlmProvider: openai-compatible", () => {
       { ...settings, temperature: 0.7, maxOutputTokens: 50 },
       { env: { OPENAI_BASE_URL: "http://gpu-box:8000/v1", OPENAI_API_KEY: "k-1" }, fetch: fetchFn },
     );
-    expect(provider).toBeInstanceOf(OpenAiChatProvider);
+    expect(provider).toBeInstanceOf(MeteredProvider);
     expect(provider.modelId).toBe("openai-compatible:gpt-x");
     const events = [];
     for await (const delta of provider.chat([{ role: "user", content: "hi" }])) events.push(delta);
