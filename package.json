@@ -27,7 +27,7 @@
     "eval:validate": "tsx scripts/validate-eval-dataset.ts",
     "bench:rerank": "tsx scripts/bench-rerankers.ts",
     "bench:hnsw": "tsx scripts/bench-hnsw.ts",
-    "deps:check": "depcruise src --config .dependency-cruiser.mjs",
+    "deps:check": "depcruise src apps packages --config .dependency-cruiser.mjs",
     "format": "prettier --write .",
     "prepare": "husky"
   },
