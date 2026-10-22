@@ -1,0 +1,12 @@
+{
+  "all-minilm": { "dimensions": 384 },
+  "nomic-embed-text": {
+    "dimensions": 768,
+    "queryPrefix": "search_query: ",
+    "documentPrefix": "search_document: "
+  },
+  "mxbai-embed-large": {
+    "dimensions": 1024,
+    "queryPrefix": "Represent this sentence for searching relevant passages: "
+  }
+}

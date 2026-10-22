@@ -1,0 +1,13 @@
+{
+  "name": "embedders",
+  "description": "Three embedding models, same chunks, dense retrieval only so nothing else hides the difference",
+  "dataset": "evals/datasets/v1.jsonl",
+  "generation": false,
+  "base": {
+    "chunking": { "strategy": "recursive", "maxTokens": 300, "overlapTokens": 45 },
+    "retrieval": { "strategy": "dense", "k": 5 }
+  },
+  "matrix": {
+    "embedding.model": ["all-minilm", "nomic-embed-text", "mxbai-embed-large"]
+  }
+}
