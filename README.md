@@ -37,6 +37,7 @@ pnpm test
 | `pnpm deps:check`               | Check the layer rules in `docs/architecture.md`                 |
 | `pnpm eval:validate <pdf>`      | Check the evaluation dataset against the ingested book          |
 | `pnpm experiment <file>`        | Run the variants of an experiment over the evaluation dataset   |
+| `pnpm report <run>`             | Turn an experiment run into a Markdown A/B report               |
 
 ## Ingesting a book
 
