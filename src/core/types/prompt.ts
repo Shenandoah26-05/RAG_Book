@@ -26,7 +26,7 @@ export interface DroppedChunk {
 export interface AssembledPrompt {
   /** Instructions plus the numbered sources. */
   readonly system: string;
-  /** The question, unchanged. */
+  /** The question, unchanged, or with the passage the reader selected quoted before it. */
   readonly user: string;
   /** `"<id>@<version>"` of the template, e.g. "rag-system@v1". */
   readonly promptVersion: string;

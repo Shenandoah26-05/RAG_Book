@@ -11,6 +11,7 @@ import {
   isOrderingName,
   ORDERING_NAMES,
   parsePromptTemplate,
+  SelectionTransformer,
   TemplateContextAssembler,
 } from "../strategies/index.js";
 import { buildChunkerRegistry } from "./build-chunkers.js";
@@ -172,7 +173,11 @@ export async function buildPipelineWithConfig(
 
   const pipeline = new RagPipeline({
     // rewriting and HyDE use the answering model, like the "llm" reranker
-    transformer: await buildQueryTransformer(config.queryTransform, { llm, promptsDir }),
+    // a selected passage is searched for as well as the question (RAG-104); the wrapper is invisible
+    // without one, and reports the name of the transformer it wraps
+    transformer: new SelectionTransformer(
+      await buildQueryTransformer(config.queryTransform, { llm, promptsDir }),
+    ),
     retriever,
     reranker: rerank.reranker,
     rerankCandidates: rerank.candidates,

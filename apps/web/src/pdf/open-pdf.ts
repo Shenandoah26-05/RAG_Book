@@ -24,7 +24,7 @@ export const openPdf: OpenPdf = async (url) => {
   const book: PdfBook = {
     pageCount: document.numPages,
 
-    async render(pageNumber, canvas, cssWidth, signal) {
+    async render(pageNumber, { canvas, textLayer }, cssWidth, signal) {
       if (stopped(signal)) return undefined;
       const page = await document.getPage(pageNumber);
       if (stopped(signal)) return undefined;
@@ -54,16 +54,32 @@ export const openPdf: OpenPdf = async (url) => {
         viewport,
         ...(density === 1 ? {} : { transform: [density, 0, 0, density, 0, 0] }),
       });
+      // the text of the page, invisible, over the picture: it is what makes the page selectable. It is
+      // placed by the same viewport as the picture, and pdf.js's own styles (see styles.css) size it
+      // with these two numbers.
+      textLayer.replaceChildren();
+      textLayer.style.setProperty("--scale-factor", scale.toString());
+      textLayer.style.setProperty("--total-scale-factor", scale.toString());
+      textLayer.style.width = canvas.style.width;
+      textLayer.style.height = canvas.style.height;
+      const text = new pdfjs.TextLayer({
+        textContentSource: page.streamTextContent(),
+        container: textLayer,
+        viewport,
+      });
+
       const stop = (): void => {
         task.cancel();
+        text.cancel();
       };
       signal.addEventListener("abort", stop, { once: true });
       try {
         await task.promise;
+        await text.render();
         return view;
       } catch (error) {
         // a drawing that was cancelled because the reader moved on is not a failure
-        if (error instanceof pdfjs.RenderingCancelledException) return undefined;
+        if (error instanceof pdfjs.RenderingCancelledException || stopped(signal)) return undefined;
         throw error;
       } finally {
         signal.removeEventListener("abort", stop);

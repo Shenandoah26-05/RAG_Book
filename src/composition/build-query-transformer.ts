@@ -97,15 +97,22 @@ export async function buildQueryTransformer(
 }
 
 /**
- * Makes the retriever search for the extra texts a transformer adds (`Query.variants`). Only wrapped
- * when HyDE or multi-query is on: otherwise nothing would ever set a variant. Rankings are merged
- * with RRF, which needs no scale between searches.
+ * Makes the retriever search for the extra texts a transformer adds (`Query.variants`): HyDE and
+ * multi-query add them to every question, and a passage the reader selected adds itself (RAG-104).
+ * So it is always wrapped; a query with no variants costs one search, the inner retriever's. Rankings
+ * are merged with RRF, which needs no scale between searches.
+ *
+ * With HyDE and multi-query off, the wrapper reports the inner retriever's name: the only variants
+ * then come from a selection, and a trace or report that has nothing to do with one reads as it
+ * always did.
  */
 export function withVariantSearch(
   retriever: Retriever,
   settings: QueryTransformSettings,
 ): Retriever {
-  return settings.hyde || settings.multiQuery
-    ? new MultiQueryRetriever({ inner: retriever, fusion: new RrfFusion() })
-    : retriever;
+  return new MultiQueryRetriever({
+    inner: retriever,
+    fusion: new RrfFusion(),
+    ...(settings.hyde || settings.multiQuery ? {} : { name: retriever.name }),
+  });
 }

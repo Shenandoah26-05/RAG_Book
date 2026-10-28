@@ -12,11 +12,24 @@ export type TurnStatus =
   /** It failed; `error` says why. */
   | "failed";
 
+/** A passage the reader selected on the page and asked about. */
+export interface AskedPassage {
+  readonly text: string;
+  readonly page?: number;
+}
+
 /** One question and what has come back for it. */
 export interface ChatTurn {
   /** Unique in the conversation; a citation chip is addressed by it. */
   readonly id: number;
   readonly question: string;
+  /** The passage the reader selected when they asked, if they did. */
+  readonly selection?: AskedPassage;
+  /**
+   * The part of the book the search was limited to, as the titles from the chapter down. Absent when
+   * the whole book was searched. Kept so that a refusal can be asked again more widely.
+   */
+  readonly scope?: readonly string[];
   /** The answer so far: the `token` events joined. */
   readonly answer: string;
   readonly status: TurnStatus;
@@ -39,7 +52,13 @@ export interface ChatState {
 export const initialChat: ChatState = { turns: [] };
 
 export type ChatAction =
-  | { readonly type: "ask"; readonly id: number; readonly question: string }
+  | {
+      readonly type: "ask";
+      readonly id: number;
+      readonly question: string;
+      readonly selection?: AskedPassage;
+      readonly scope?: readonly string[];
+    }
   | { readonly type: "event"; readonly id: number; readonly event: AskEvent }
   | { readonly type: "failed"; readonly id: number; readonly message: string }
   | { readonly type: "stopped"; readonly id: number }
@@ -91,6 +110,8 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
           {
             id: action.id,
             question: action.question,
+            ...(action.selection === undefined ? {} : { selection: action.selection }),
+            ...(action.scope === undefined ? {} : { scope: action.scope }),
             answer: "",
             status: "streaming",
             citations: [],

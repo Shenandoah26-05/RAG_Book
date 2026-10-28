@@ -14,9 +14,11 @@ import {
   errorResponseSchema,
   MAX_HISTORY_TURNS,
   MAX_K,
+  MAX_SELECTION_CHARS,
   MAX_QUESTION_CHARS,
   pageRequestSchema,
   pageResponseSchema,
+  selectionSchema,
   wireTraceSchema,
 } from "./schemas.js";
 
@@ -221,6 +223,39 @@ describe("the book, for the reader", () => {
     expect(bookRequestSchema.safeParse({}).success).toBe(true);
     expect(bookRequestSchema.safeParse({ doc: book.docId }).success).toBe(true);
     expect(bookRequestSchema.safeParse({ doc: "nope" }).success).toBe(false);
+  });
+});
+
+describe("the selected passage of a question", () => {
+  it("takes the words and the page, and trims the words", () => {
+    expect(selectionSchema.parse({ text: "  a passage \n", page: 4 })).toEqual({
+      text: "a passage",
+      page: 4,
+    });
+    expect(selectionSchema.parse({ text: "a passage" })).toEqual({ text: "a passage" });
+  });
+
+  it("is optional in a question", () => {
+    expect(askRequestSchema.parse({ question: "q?" })).toEqual({ question: "q?" });
+    expect(
+      askRequestSchema.parse({ question: "q?", selection: { text: "the passage", page: 2 } }),
+    ).toEqual({ question: "q?", selection: { text: "the passage", page: 2 } });
+  });
+
+  it.each([
+    [{ text: "" }],
+    [{ text: "   " }],
+    [{ text: "x".repeat(MAX_SELECTION_CHARS + 1) }],
+    [{ text: "ok", page: 0 }],
+    [{ text: "ok", page: 1.5 }],
+    [{ text: "ok", unknown: true }],
+    [{}],
+  ])("rejects %j", (selection) => {
+    expect(selectionSchema.safeParse(selection).success).toBe(false);
+  });
+
+  it("accepts exactly the longest allowed passage", () => {
+    expect(selectionSchema.safeParse({ text: "x".repeat(MAX_SELECTION_CHARS) }).success).toBe(true);
   });
 });
 
