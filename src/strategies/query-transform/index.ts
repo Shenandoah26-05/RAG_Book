@@ -8,4 +8,9 @@ export type { HydeTransformerOptions } from "./hyde-transformer.js";
 export { MULTI_QUERY_PLACEHOLDERS, MultiQueryTransformer } from "./multi-query-transformer.js";
 export type { MultiQueryTransformerOptions } from "./multi-query-transformer.js";
 export { QueryTransformChain } from "./query-transform-chain.js";
+export {
+  MAX_SELECTION_SEARCH_CHARS,
+  SelectionTransformer,
+  selectionSearchText,
+} from "./selection-transformer.js";
 export { fillQueryPrompt, parseQueryPrompt } from "./query-prompt.js";

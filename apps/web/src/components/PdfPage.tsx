@@ -38,12 +38,14 @@ function useWidth(ref: React.RefObject<HTMLElement | null>): number {
  * reader never waits behind pages they have left.
  *
  * The marks are `div`s laid over the canvas, placed from how the page was drawn (`PageView`) and where
- * the API says the passage is. The first one is scrolled into view, because a passage far down a tall
+ * the API says the passage is. Over them lies the page's text layer: invisible text, in the places the
+ * words are, so that the reader can select a passage and ask about it. The first one is scrolled into view, because a passage far down a tall
  * page is otherwise off screen when the reader arrives.
  */
 export function PdfPage({ book, page, zoom, boxes }: PdfPageProps) {
   const area = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
+  const textLayer = useRef<HTMLDivElement>(null);
   const first = useRef<HTMLDivElement>(null);
   const available = useWidth(area);
   const [failure, setFailure] = useState<string | undefined>(undefined);
@@ -53,12 +55,18 @@ export function PdfPage({ book, page, zoom, boxes }: PdfPageProps) {
 
   useEffect(() => {
     const target = canvas.current;
-    if (target === null || available === 0) return;
+    const text = textLayer.current;
+    if (target === null || text === null || available === 0) return;
     const controller = new AbortController();
     setFailure(undefined);
     setView(undefined);
     book
-      .render(page, target, Math.floor(available * zoom), controller.signal)
+      .render(
+        page,
+        { canvas: target, textLayer: text },
+        Math.floor(available * zoom),
+        controller.signal,
+      )
       .then((drawn) => {
         if (!controller.signal.aborted) setView(drawn);
       })
@@ -101,6 +109,8 @@ export function PdfPage({ book, page, zoom, boxes }: PdfPageProps) {
             }}
           />
         ))}
+        {/* the page's text, invisible, over the picture: what makes it selectable */}
+        <div ref={textLayer} className="textLayer" data-testid="text-layer" />
       </div>
       {failure === undefined ? null : (
         <p role="alert" className="notice notice-error">

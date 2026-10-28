@@ -9,6 +9,7 @@ import type {
 } from "../../core/index.js";
 import { RagError } from "../../shared/index.js";
 import { formatSource, makeCitation } from "./format-source.js";
+import { formatUserMessage } from "./format-selection.js";
 import { removeNearDuplicates } from "./near-duplicates.js";
 import { orderForPrompt } from "./ordering.js";
 import type { OrderingName } from "./ordering.js";
@@ -111,7 +112,7 @@ export class TemplateContextAssembler implements ContextAssembler {
       system: this.#template.text.replace(SOURCES_PLACEHOLDER, () =>
         ordered.length === 0 ? NO_SOURCES : block,
       ),
-      user: query.text,
+      user: formatUserMessage(query),
       promptVersion: `${this.#template.id}@${this.#template.version}`,
       included: ordered,
       citations: ordered.map((item, position) => makeCitation(position + 1, item.chunk)),

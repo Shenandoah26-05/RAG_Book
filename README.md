@@ -83,6 +83,11 @@ reached the prompt) and the prompt itself. See [apps/web/README.md](apps/web/REA
 [docs/design/rag-102-book-reader.md](docs/design/rag-102-book-reader.md),
 [docs/design/rag-103-chat-citations.md](docs/design/rag-103-chat-citations.md) and
 [docs/design/rag-105-retrieval-inspector.md](docs/design/rag-105-retrieval-inspector.md).
+in it takes you to the cited page and highlights the passage. Select a passage on the page and press
+"Ask about this" to ask about it; the search is limited to the chapter you are in. See [apps/web/README.md](apps/web/README.md) and
+[docs/design/rag-102-book-reader.md](docs/design/rag-102-book-reader.md) and
+[docs/design/rag-103-chat-citations.md](docs/design/rag-103-chat-citations.md) and
+[docs/design/rag-104-ask-about-selection.md](docs/design/rag-104-ask-about-selection.md).
 
 ## Before merging a retrieval change
 

@@ -13,6 +13,11 @@ export const MAX_QUESTION_CHARS = 2000;
 export const MAX_K = 50;
 /** The most earlier turns a request may carry. The server reads only the last few of them. */
 export const MAX_HISTORY_TURNS = 10;
+/**
+ * The longest selected passage a question may carry, in characters. It goes into the prompt beside
+ * the sources, and a local model has a small window, so it is about half a page.
+ */
+export const MAX_SELECTION_CHARS = 2000;
 /** The longest earlier question or answer, in characters. */
 export const MAX_TURN_CHARS = 8000;
 
@@ -64,6 +69,19 @@ export const askFilterSchema = z.strictObject({
 });
 export type AskFilter = z.infer<typeof askFilterSchema>;
 
+/**
+ * A passage the reader selected on the page before asking ("explain this"). It is searched for as
+ * well as the question, and the model is shown it as quoted context. It is not a source: answers still
+ * cite the numbered sources, which normally include the passage's own chunk.
+ */
+export const selectionSchema = z.strictObject({
+  /** The selected words, as the page shows them. */
+  text: z.string().trim().min(1, "must not be blank").max(MAX_SELECTION_CHARS),
+  /** The page the reader was on, when known. */
+  page: page.optional(),
+});
+export type Selection = z.infer<typeof selectionSchema>;
+
 /** The body of `POST /ask`. */
 export const askRequestSchema = z.strictObject({
   question: z.string().trim().min(1, "must not be blank").max(MAX_QUESTION_CHARS),
@@ -77,6 +95,8 @@ export const askRequestSchema = z.strictObject({
    * prompt (RAG-105). Off unless asked, since it carries the whole prompt.
    */
   inspect: z.boolean().optional(),
+  /** A passage the reader selected, to ask about. */
+  selection: selectionSchema.optional(),
 });
 export type AskRequest = z.infer<typeof askRequestSchema>;
 

@@ -11,6 +11,7 @@ import type {
   Reranker,
   RetrievedChunk,
   Retriever,
+  Selection,
 } from "../core/index.js";
 import { RagError, RetrievalProbe, Trace, withProbe, withTrace } from "../shared/index.js";
 import type { RetrieverCall, TraceSummary } from "../shared/index.js";
@@ -43,6 +44,11 @@ export interface AskOptions {
    * stand alone. Without it every question stands alone.
    */
   readonly history?: readonly ConversationTurn[];
+  /**
+   * A passage the reader selected on the page. Retrieval searches for it as well as for the
+   * question, and the model is shown it as quoted context ("explain this").
+   */
+  readonly selection?: Selection;
   /** Aborting stops the question: before the next stage, or in the middle of the answer. */
   readonly signal?: AbortSignal;
 }
@@ -142,7 +148,7 @@ export class RagPipeline {
   ): Promise<RagAnswer> {
     const { transformer, retriever, reranker, assembler, llm } = this.#deps;
     const k = options.k ?? this.#deps.k;
-    const { filter, signal, history } = options;
+    const { filter, signal, history, selection } = options;
     assertCount("k", k, 1);
     if (question.trim() === "") {
       throw new RagError("INVALID_ARGUMENT", "The question is blank");
@@ -161,13 +167,19 @@ export class RagPipeline {
       "transform",
       () =>
         transformer.transform(
-          { text: question, ...(history === undefined || history.length === 0 ? {} : { history }) },
+          {
+            text: question,
+            ...(history === undefined || history.length === 0 ? {} : { history }),
+            ...(selection === undefined ? {} : { selection }),
+          },
           signal === undefined ? {} : { signal },
         ),
       (q) => ({
         transformer: transformer.name,
         changed: q.text !== question,
         history: history?.length ?? 0,
+        // only said when there is one, so the trace of a question without a selection is unchanged
+        ...(selection === undefined ? {} : { selected: true }),
         variants: q.variants?.length ?? 0,
       }),
     );
