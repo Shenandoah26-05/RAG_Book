@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   askFilterSchema,
+  bookRequestSchema,
+  bookResponseSchema,
   askRequestSchema,
   chunkRequestSchema,
   chunkResponseSchema,
@@ -175,5 +177,44 @@ describe("responses", () => {
     expect(errorResponseSchema.safeParse({ error: { code: "TEAPOT", message: "x" } }).success).toBe(
       false,
     );
+  });
+});
+
+describe("the book, for the reader", () => {
+  const entry = (title: string, children: unknown[] = []) => ({
+    title,
+    level: 1,
+    pageStart: 1,
+    pageEnd: 2,
+    children,
+  });
+  const book = {
+    docId: "a1b2c3d4-e5f6-5a7b-8c9d-0e1f2a3b4c5d",
+    title: "Vectors",
+    pageCount: 3,
+    pdf: true,
+    outline: [entry("One", [{ ...entry("One.A"), level: 2 }]), entry("Two")],
+  };
+
+  it("accepts a book with a nested outline, and an empty one", () => {
+    expect(bookResponseSchema.safeParse(book).success).toBe(true);
+    expect(bookResponseSchema.safeParse({ ...book, outline: [] }).success).toBe(true);
+  });
+
+  it("checks the nested entries too", () => {
+    const bad = { ...book, outline: [entry("One", [{ ...entry("bad"), pageStart: 0 }])] };
+    expect(bookResponseSchema.safeParse(bad).success).toBe(false);
+  });
+
+  it("refuses unknown fields and a missing pdf flag", () => {
+    expect(bookResponseSchema.safeParse({ ...book, extra: 1 }).success).toBe(false);
+    const withoutPdf = Object.fromEntries(Object.entries(book).filter(([key]) => key !== "pdf"));
+    expect(bookResponseSchema.safeParse(withoutPdf).success).toBe(false);
+  });
+
+  it("takes an optional document id for the request", () => {
+    expect(bookRequestSchema.safeParse({}).success).toBe(true);
+    expect(bookRequestSchema.safeParse({ doc: book.docId }).success).toBe(true);
+    expect(bookRequestSchema.safeParse({ doc: "nope" }).success).toBe(false);
   });
 });

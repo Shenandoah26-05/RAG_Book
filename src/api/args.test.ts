@@ -41,11 +41,19 @@ describe("parseApiArgs", () => {
         "dense",
         "--processed-dir",
         "p",
+        "--raw-dir",
+        "r",
         "--index-dir=i",
         "--cache-dir",
         "c",
       ]),
-    ).toMatchObject({ variant: "dense", processedDir: "p", indexDir: "i", cacheDir: "c" });
+    ).toMatchObject({
+      variant: "dense",
+      processedDir: "p",
+      rawDir: "r",
+      indexDir: "i",
+      cacheDir: "c",
+    });
   });
 
   it("skips config overrides and --config, with their values", () => {
