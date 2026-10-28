@@ -2,6 +2,7 @@ import {
   askRequestSchema,
   bookRequestSchema,
   chunkRequestSchema,
+  highlightRequestSchema,
   pageRequestSchema,
 } from "@rag-book/api-contract";
 import type { ErrorBody, ErrorResponse } from "@rag-book/api-contract";
@@ -17,6 +18,7 @@ import { noopLogger } from "../shared/index.js";
 import type { Logger } from "../shared/index.js";
 import { describeError, invalidRequest, notFound } from "./errors.js";
 import type { ErrorAnswer } from "./errors.js";
+import { toWireHighlights } from "./highlights.js";
 import { parseRange } from "./range.js";
 import {
   toMetadataFilter,
@@ -348,6 +350,31 @@ export function createApp(services: ApiServices, options: AppOptions = {}): Hono
             }),
       },
     });
+  });
+
+  // ---- GET /highlights ----
+
+  // Where a passage (a citation's character range) is on its pages, as rectangles, so the reader can
+  // mark it on the page. The server does this because only it holds the positions of the text.
+  app.get("/highlights", async (c) => {
+    const request = check(highlightRequestSchema, {
+      from: c.req.query("from"),
+      to: c.req.query("to"),
+      doc: c.req.query("doc"),
+    });
+    if (!request.ok) return fail(c, request.answer);
+    const found = await readerDocument(request.value.doc);
+    if (!found.ok) return fail(c, found.answer);
+    const { from, to } = request.value;
+    if (to > found.doc.text.length) {
+      return fail(
+        c,
+        invalidRequest(
+          `The passage ends at ${to.toString()}, past the end of the text (${found.doc.text.length.toString()} characters).`,
+        ),
+      );
+    }
+    return c.json(toWireHighlights(found.doc, from, to));
   });
 
   // ---- GET /chunks/:id ----

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  highlightRequestSchema,
+  highlightResponseSchema,
+  MAX_HIGHLIGHT_CHARS,
+} from "./highlights.js";
+import {
   askFilterSchema,
   bookRequestSchema,
   bookResponseSchema,
@@ -216,5 +221,35 @@ describe("the book, for the reader", () => {
     expect(bookRequestSchema.safeParse({}).success).toBe(true);
     expect(bookRequestSchema.safeParse({ doc: book.docId }).success).toBe(true);
     expect(bookRequestSchema.safeParse({ doc: "nope" }).success).toBe(false);
+  });
+});
+
+describe("highlights", () => {
+  it("reads a passage from the query: whole numbers, in order, not too long", () => {
+    expect(highlightRequestSchema.parse({ from: "5", to: "15" })).toEqual({ from: 5, to: 15 });
+    for (const bad of [
+      { from: "5" },
+      { from: "a", to: "9" },
+      { from: "9", to: "3" },
+      { from: "4", to: "4" },
+      { from: "0", to: String(MAX_HIGHLIGHT_CHARS + 1) },
+      { from: "-1", to: "4" },
+    ]) {
+      expect(highlightRequestSchema.safeParse(bad).success, JSON.stringify(bad)).toBe(false);
+    }
+    expect(
+      highlightRequestSchema.safeParse({ from: "0", to: String(MAX_HIGHLIGHT_CHARS) }).success,
+    ).toBe(true);
+  });
+
+  it("checks boxes: a positive width and height", () => {
+    const docId = "a1b2c3d4-e5f6-5a7b-8c9d-0e1f2a3b4c5d";
+    const page = (box: object) => ({ docId, pages: [{ number: 1, boxes: [box] }] });
+    expect(
+      highlightResponseSchema.safeParse(page({ x: 1, y: 2, width: 3, height: 4 })).success,
+    ).toBe(true);
+    expect(
+      highlightResponseSchema.safeParse(page({ x: 1, y: 2, width: 0, height: 4 })).success,
+    ).toBe(false);
   });
 });
