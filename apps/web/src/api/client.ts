@@ -1,9 +1,18 @@
 import {
   bookResponseSchema,
+  ContractError,
   errorResponseSchema,
+  highlightResponseSchema,
   pageResponseSchema,
+  readAskEvents,
 } from "@rag-book/api-contract";
-import type { BookResponse, PageResponse } from "@rag-book/api-contract";
+import type {
+  AskEvent,
+  AskRequest,
+  BookResponse,
+  HighlightResponse,
+  PageResponse,
+} from "@rag-book/api-contract";
 
 /**
  * Why a call to the API failed, in terms a reader can act on:
@@ -29,6 +38,19 @@ export interface ApiClient {
   getPage(number: number, doc?: string, signal?: AbortSignal): Promise<PageResponse>;
   /** Where the PDF is, for pdf.js to load in ranges. */
   pdfUrl(doc?: string): string;
+  /** Where the passage `[from, to)` of the text is, as boxes on its pages. */
+  getHighlights(
+    from: number,
+    to: number,
+    doc?: string,
+    signal?: AbortSignal,
+  ): Promise<HighlightResponse>;
+  /**
+   * Asks a question. The answer arrives as events: `token`s, then `citations`, `trace` and `done`
+   * (or `error`). The request itself failing (the API is not running, the question is refused before
+   * the answer starts) rejects with an `ApiError` when the first event is read.
+   */
+  ask(request: AskRequest, signal?: AbortSignal): AsyncGenerator<AskEvent>;
 }
 
 export interface ApiClientOptions {
@@ -90,7 +112,72 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     return parsed;
   }
 
+  /** The error an answer that is not a success stands for, in words a reader can act on. */
+  async function failureOf(response: Response): Promise<ApiError> {
+    let json: unknown;
+    try {
+      json = await response.json();
+    } catch {
+      return new ApiError(
+        `The API answered ${response.status.toString()}.`,
+        "api",
+        response.status,
+      );
+    }
+    const failure = errorResponseSchema.safeParse(json);
+    return new ApiError(
+      failure.success
+        ? failure.data.error.message
+        : `The API answered ${response.status.toString()}.`,
+      "api",
+      response.status,
+      failure.success ? failure.data.error.code : undefined,
+    );
+  }
+
+  async function* ask(request: AskRequest, signal?: AbortSignal): AsyncGenerator<AskEvent> {
+    let response: Response;
+    try {
+      response = await call(`${base}/ask`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
+        body: JSON.stringify(request),
+        ...(signal === undefined ? {} : { signal }),
+      });
+    } catch (error) {
+      if (signal?.aborted === true) throw error;
+      throw new ApiError("Cannot reach the API. Start it with: pnpm api", "unreachable");
+    }
+    if (!response.ok) throw await failureOf(response);
+    if (response.body === null) {
+      throw new ApiError("The API sent no answer.", "invalid-response", response.status);
+    }
+    try {
+      yield* readAskEvents(response.body);
+    } catch (error) {
+      if (error instanceof ContractError) {
+        throw new ApiError(
+          "The API answered in a shape this page does not understand. Update both to the same version.",
+          "invalid-response",
+        );
+      }
+      // the connection dropped in the middle of the answer, or the reader stopped it
+      if (signal?.aborted === true) throw error;
+      throw new ApiError("The connection to the API was lost during the answer.", "unreachable");
+    }
+  }
+
   return {
+    ask,
+    getHighlights: (from, to, doc, signal) =>
+      getJson(
+        `/highlights?from=${from.toString()}&to=${to.toString()}${doc === undefined ? "" : `&doc=${encodeURIComponent(doc)}`}`,
+        (json) => {
+          const parsed = highlightResponseSchema.safeParse(json);
+          return parsed.success ? parsed.data : undefined;
+        },
+        signal,
+      ),
     getBook: (doc, signal) =>
       getJson(
         `/book${query(doc)}`,

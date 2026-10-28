@@ -1,13 +1,17 @@
-import type { BookResponse } from "@rag-book/api-contract";
-import { useMemo, useState } from "react";
+import type { BookResponse, WireCitation } from "@rag-book/api-contract";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ApiClient } from "../api/client.js";
+import { useChat } from "../chat/use-chat.js";
+import { useHighlight } from "../highlight/use-highlight.js";
 import type { OpenPdf } from "../pdf/types.js";
 import { currentSectionTitle, indexOutline } from "../reader/outline.js";
 import type { PositionStorage } from "../reader/position.js";
 import { usePage } from "../reader/use-page.js";
 import { usePdf } from "../reader/use-pdf.js";
+import { ChatPanel } from "./ChatPanel.js";
 import { PageNav } from "./PageNav.js";
 import { PdfPage } from "./PdfPage.js";
+import { SourceBar } from "./SourceBar.js";
 import { TextPage } from "./TextPage.js";
 import { Toc } from "./Toc.js";
 
@@ -18,19 +22,65 @@ interface ReaderProps {
   readonly storage: PositionStorage | undefined;
 }
 
+/** The source chosen by clicking a citation: which answer it came from, and which source it is. */
+interface Selected {
+  readonly turnId: number;
+  readonly citation: WireCitation;
+}
+
 /**
- * The open book: the table of contents on the left, the page in the middle, the page controls
- * below. The page is the PDF drawn by pdf.js; when the PDF is missing or will not open, it is the
- * extracted text, with a note saying why.
+ * The open book: the table of contents on the left, the page in the middle, the chat on the right,
+ * the page controls below. The page is the PDF drawn by pdf.js; when the PDF is missing or will not
+ * open, it is the extracted text, with a note saying why.
+ *
+ * Following a citation is the one thing that joins the chat and the page: the reader goes to the
+ * cited page and the passage is marked there, on the image when it can be placed and in the text
+ * otherwise. The mark stays until another source is chosen, it is cleared, or Escape is pressed.
  */
 export function Reader({ book, client, openPdf, storage }: ReaderProps) {
   const controls = usePage({ docId: book.docId, pageCount: book.pageCount, storage });
   const outline = useMemo(() => indexOutline(book.outline), [book.outline]);
   const pdf = usePdf(book.pdf ? client.pdfUrl(book.docId) : undefined, openPdf);
+  const chat = useChat(client, book.docId);
   const [zoom, setZoom] = useState(1);
+  const [selected, setSelected] = useState<Selected | undefined>(undefined);
+  const highlight = useHighlight(selected?.citation, client, book.docId);
+
+  const { goTo } = controls;
+  const follow = useCallback(
+    (turnId: number, citation: WireCitation) => {
+      setSelected({ turnId, citation });
+      goTo(citation.pageStart);
+    },
+    [goTo],
+  );
+  const clearSource = useCallback(() => {
+    setSelected(undefined);
+  }, []);
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent): void => {
+      if (event.key === "Escape") setSelected(undefined);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+    };
+  }, []);
+
+  // a new conversation has no sources to keep marked
+  const cleared = chat.turns.length === 0;
+  useEffect(() => {
+    if (cleared) setSelected(undefined);
+  }, [cleared]);
 
   const section = currentSectionTitle(outline, controls.page);
   const showingImage = pdf.status === "ready";
+  const boxes = highlight.status === "ready" ? highlight.pages.get(controls.page) : undefined;
+  const passage =
+    selected === undefined
+      ? undefined
+      : { from: selected.citation.charStart, to: selected.citation.charEnd };
 
   return (
     <div className="reader">
@@ -44,6 +94,17 @@ export function Reader({ book, client, openPdf, storage }: ReaderProps) {
       </aside>
 
       <main className="reader-page">
+        {selected === undefined ? null : (
+          <SourceBar
+            citation={selected.citation}
+            highlight={highlight}
+            page={controls.page}
+            onShow={() => {
+              goTo(selected.citation.pageStart);
+            }}
+            onClear={clearSource}
+          />
+        )}
         {pdf.status === "none" ? (
           <p className="notice">
             The PDF of this book was not found, so this is the extracted text. Put the file in{" "}
@@ -57,12 +118,24 @@ export function Reader({ book, client, openPdf, storage }: ReaderProps) {
         ) : null}
         {pdf.status === "loading" ? <p className="muted">Opening the book…</p> : null}
         {pdf.status === "ready" ? (
-          <PdfPage book={pdf.book} page={controls.page} zoom={zoom} />
+          <PdfPage book={pdf.book} page={controls.page} zoom={zoom} boxes={boxes} />
         ) : null}
         {pdf.status === "none" || pdf.status === "failed" ? (
-          <TextPage client={client} docId={book.docId} page={controls.page} />
+          <TextPage client={client} docId={book.docId} page={controls.page} passage={passage} />
         ) : null}
       </main>
+
+      <aside className="reader-chat">
+        <ChatPanel
+          chat={chat}
+          onCite={follow}
+          active={
+            selected === undefined
+              ? undefined
+              : { turnId: selected.turnId, index: selected.citation.index }
+          }
+        />
+      </aside>
 
       <footer className="reader-controls">
         <PageNav
