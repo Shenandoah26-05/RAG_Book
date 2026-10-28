@@ -2,6 +2,7 @@ import type { AskEvent, WireCitation } from "@rag-book/api-contract";
 import { MAX_TURN_CHARS } from "@rag-book/api-contract";
 import { describe, expect, it } from "vitest";
 import { toCssRect } from "../highlight/geometry.js";
+import { inspection, inspectionEvent } from "../inspector/fixtures.js";
 import type { PageView } from "../highlight/geometry.js";
 import { markPassage } from "../highlight/text-range.js";
 import { splitAnswer } from "./answer-text.js";
@@ -111,6 +112,29 @@ describe("chatReducer", () => {
       complete: true,
       trace,
     });
+  });
+
+  it("keeps the inspection of an answer that asked for one", () => {
+    const state = run([
+      { type: "ask", id: 1, question: "Why?" },
+      event(1, inspectionEvent()),
+      event(1, done()),
+    ]);
+    expect(state.turns[0]?.inspection).toEqual(inspection());
+  });
+
+  it("has no inspection on an answer that did not ask for one", () => {
+    const state = run([{ type: "ask", id: 1, question: "Why?" }, event(1, done())]);
+    expect(state.turns[0]).not.toHaveProperty("inspection");
+  });
+
+  it("ignores an inspection that arrives after Stop", () => {
+    const state = run([
+      { type: "ask", id: 1, question: "Why?" },
+      { type: "stopped", id: 1 },
+      event(1, inspectionEvent()),
+    ]);
+    expect(state.turns[0]).not.toHaveProperty("inspection");
   });
 
   it("keeps the refusal reason when the book would not answer", () => {

@@ -17,6 +17,7 @@ import {
   chunkOf,
   fakeServices,
   groundedAnswer,
+  retrieved,
 } from "./api.testing.js";
 import type { FakeServicesOptions } from "./api.testing.js";
 
@@ -159,6 +160,65 @@ describe("POST /ask", () => {
     expect(got.at(-1)?.data).toMatchObject({ answered: false, refusal: "no-sources" });
   });
 
+  describe("inspect (RAG-105)", () => {
+    it("sends no inspection unless the request asks for one", async () => {
+      const { app } = setup();
+      const got = await events(await app.request("/ask", post({ question: "Q?" })));
+      expect(got.map((e) => e.event)).not.toContain("inspection");
+    });
+
+    it("sends the inspection after the trace and before done when asked", async () => {
+      const { app } = setup();
+      const got = await events(await app.request("/ask", post({ question: "Q?", inspect: true })));
+      expect(got.map((e) => e.event).slice(-3)).toEqual(["trace", "inspection", "done"]);
+    });
+
+    it("sends the chunks and the prompt behind the answer", async () => {
+      const second = chunkOf("Cosine similarity compares the direction of two vectors.");
+      const { app } = setup({
+        answer: () =>
+          groundedAnswer({
+            sources: [CHUNK],
+            prompt: { sourceTokens: 42, budget: 500 },
+            retrieval: {
+              candidates: [retrieved(second, 1), retrieved(CHUNK, 2)],
+              ranked: [retrieved(CHUNK, 1)],
+              retrievers: [{ name: "dense", results: [retrieved(CHUNK, 4)] }],
+            },
+          }),
+      });
+      const got = await events(await app.request("/ask", post({ question: "Q?", inspect: true })));
+      const sent = got.find((e) => e.event === "inspection");
+      if (sent?.event !== "inspection") throw new Error("no inspection event");
+      const { candidates, prompt } = sent.data.inspection;
+      expect(candidates.map((c) => [c.rank, c.finalRank, c.fate])).toEqual([
+        [1, null, "cut"],
+        [2, 1, "used"],
+      ]);
+      expect(candidates[1]?.foundBy).toEqual([{ retriever: "dense", rank: 4, score: 0.25 }]);
+      expect(prompt).toMatchObject({ sourceTokens: 42, budget: 500, sent: true });
+    });
+
+    it("says the prompt was not sent when the book refused to answer", async () => {
+      const { app } = setup({
+        answer: () =>
+          groundedAnswer({
+            sources: [CHUNK],
+            grounding: { answered: false, refusal: "low-score", cited: [] },
+          }),
+      });
+      const got = await events(await app.request("/ask", post({ question: "Q?", inspect: true })));
+      const sent = got.find((e) => e.event === "inspection");
+      expect(sent?.event === "inspection" && sent.data.inspection.prompt.sent).toBe(false);
+    });
+
+    it("rejects a value that is not true or false", async () => {
+      const { app } = setup();
+      const response = await app.request("/ask", post({ question: "Q?", inspect: "yes" }));
+      expect(response.status).toBe(400);
+    });
+  });
+
   describe("what it asks the pipeline", () => {
     it("passes the question trimmed, and a signal", async () => {
       const { app, services } = setup();
@@ -176,6 +236,38 @@ describe("POST /ask", () => {
       expect(services.asked[0]?.options).toMatchObject({ k: 7, history });
       expect(services.asked[1]?.options).not.toHaveProperty("history");
       expect(services.asked[1]?.options).not.toHaveProperty("k");
+    });
+
+    it("passes the selected passage, with its page, to the pipeline", async () => {
+      const { app, services } = setup();
+      const selection = { text: "Embeddings turn sentences into vectors.", page: 4 };
+      await app.request("/ask", post({ question: "Explain this", selection }));
+      expect(services.asked[0]?.options).toMatchObject({ selection });
+    });
+
+    it("trims the selected passage, and leaves the option out when there is none", async () => {
+      const { app, services } = setup();
+      await app.request(
+        "/ask",
+        post({ question: "Explain this", selection: { text: "  a passage \n" } }),
+      );
+      await app.request("/ask", post({ question: "Plain question" }));
+      expect(services.asked[0]?.options?.selection).toEqual({ text: "a passage" });
+      expect(services.asked[1]?.options).not.toHaveProperty("selection");
+    });
+
+    it("refuses a selection that is blank, too long or has unknown fields", async () => {
+      const { app, services } = setup();
+      for (const selection of [
+        { text: "   " },
+        { text: "x".repeat(2001) },
+        { text: "ok", page: 0 },
+        { text: "ok", extra: true },
+      ]) {
+        const response = await app.request("/ask", post({ question: "Explain this", selection }));
+        expect(response.status, JSON.stringify(selection).slice(0, 40)).toBe(400);
+      }
+      expect(services.asked).toHaveLength(0);
     });
 
     it("translates the filter into the library's, one clause for each part", async () => {

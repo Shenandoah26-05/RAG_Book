@@ -16,9 +16,13 @@ import {
   MAX_FEEDBACK_NOTE_CHARS,
   MAX_HISTORY_TURNS,
   MAX_K,
+  MAX_SELECTION_CHARS,
   MAX_QUESTION_CHARS,
   pageRequestSchema,
   pageResponseSchema,
+  wireCandidateSchema,
+  wireInspectionSchema,
+  selectionSchema,
   wireTraceSchema,
 } from "./schemas.js";
 
@@ -46,8 +50,14 @@ describe("askRequestSchema", () => {
     expect(askRequestSchema.parse(request)).toEqual(request);
   });
 
+  it("takes inspect, and leaves it out of a request that does not set it", () => {
+    expect(askRequestSchema.parse({ question: "q?", inspect: true }).inspect).toBe(true);
+    expect(askRequestSchema.parse({ question: "q?" })).not.toHaveProperty("inspect");
+  });
+
   it.each([
     [{}, "question"],
+    [{ question: "q?", inspect: "yes" }, "inspect"],
     [{ question: "   " }, "question"],
     [{ question: "x".repeat(MAX_QUESTION_CHARS + 1) }, "question"],
     [{ question: 5 }, "question"],
@@ -226,6 +236,39 @@ describe("the book, for the reader", () => {
   });
 });
 
+describe("the selected passage of a question", () => {
+  it("takes the words and the page, and trims the words", () => {
+    expect(selectionSchema.parse({ text: "  a passage \n", page: 4 })).toEqual({
+      text: "a passage",
+      page: 4,
+    });
+    expect(selectionSchema.parse({ text: "a passage" })).toEqual({ text: "a passage" });
+  });
+
+  it("is optional in a question", () => {
+    expect(askRequestSchema.parse({ question: "q?" })).toEqual({ question: "q?" });
+    expect(
+      askRequestSchema.parse({ question: "q?", selection: { text: "the passage", page: 2 } }),
+    ).toEqual({ question: "q?", selection: { text: "the passage", page: 2 } });
+  });
+
+  it.each([
+    [{ text: "" }],
+    [{ text: "   " }],
+    [{ text: "x".repeat(MAX_SELECTION_CHARS + 1) }],
+    [{ text: "ok", page: 0 }],
+    [{ text: "ok", page: 1.5 }],
+    [{ text: "ok", unknown: true }],
+    [{}],
+  ])("rejects %j", (selection) => {
+    expect(selectionSchema.safeParse(selection).success).toBe(false);
+  });
+
+  it("accepts exactly the longest allowed passage", () => {
+    expect(selectionSchema.safeParse({ text: "x".repeat(MAX_SELECTION_CHARS) }).success).toBe(true);
+  });
+});
+
 describe("highlights", () => {
   it("reads a passage from the query: whole numbers, in order, not too long", () => {
     expect(highlightRequestSchema.parse({ from: "5", to: "15" })).toEqual({ from: 5, to: 15 });
@@ -284,5 +327,54 @@ describe("feedbackRequestSchema", () => {
     ["an unknown field", { extra: 1 }],
   ])("refuses %s", (_name, change) => {
     expect(feedbackRequestSchema.safeParse({ ...base, ...change }).success).toBe(false);
+describe("the inspection (RAG-105)", () => {
+  const candidate = {
+    chunkId: CHUNK,
+    pageStart: 3,
+    pageEnd: 4,
+    sectionPath: ["Embeddings", "Similarity"],
+    snippet: "Cosine similarity compares direction.",
+    rank: 2,
+    score: 0.031,
+    retriever: "hybrid",
+    foundBy: [{ retriever: "dense", rank: 1, score: 0.9 }],
+    finalRank: 1,
+    finalScore: 7.5,
+    fate: "used",
+    source: 1,
+  };
+  const prompt = {
+    version: "rag-system@v2",
+    system: "SYSTEM",
+    user: "What is similarity?",
+    sourceTokens: 80,
+    budget: 100,
+    sent: true,
+  };
+
+  it("takes a candidate, and one the reranker dropped", () => {
+    expect(wireCandidateSchema.safeParse(candidate).success).toBe(true);
+    const cut = { ...candidate, finalRank: null, finalScore: null, fate: "cut" };
+    expect(wireCandidateSchema.safeParse({ ...cut, source: undefined }).success).toBe(true);
+  });
+
+  it.each([
+    ["an unknown fate", { fate: "lost" }],
+    ["a rank of 0", { rank: 0 }],
+    ["a bad chunk id", { chunkId: "nope" }],
+    ["a foundBy with no rank", { foundBy: [{ retriever: "dense", score: 1 }] }],
+    ["a field it does not know", { extra: 1 }],
+  ])("rejects %s", (_name, change) => {
+    expect(wireCandidateSchema.safeParse({ ...candidate, ...change }).success).toBe(false);
+  });
+
+  it("takes an inspection with no candidates, as when nothing was found", () => {
+    expect(wireInspectionSchema.safeParse({ candidates: [], prompt }).success).toBe(true);
+  });
+
+  it("rejects a prompt that does not say whether it was sent", () => {
+    const unsent: Partial<typeof prompt> = { ...prompt };
+    delete unsent.sent;
+    expect(wireInspectionSchema.safeParse({ candidates: [], prompt: unsent }).success).toBe(false);
   });
 });

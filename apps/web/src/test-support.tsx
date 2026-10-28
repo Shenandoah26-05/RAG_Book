@@ -126,6 +126,8 @@ export interface FakeOptions {
   askFails?: Error;
   /** What sending feedback does. Default: it is kept at once. A test can hold it to look in between. */
   feedback?: (request: FeedbackRequest) => Promise<FeedbackResponse>;
+  /** The text the fake PDF puts in its text layer (what a reader could select). */
+  textLayer?: string;
 }
 
 export interface Fakes {
@@ -168,8 +170,11 @@ export function fakes(options: FakeOptions = {}): Fakes {
   };
   const pdf: PdfBook = {
     pageCount: 12,
-    render: (page) => {
+    render: (page, surface) => {
       rendered.push(page);
+      const span = document.createElement("span");
+      span.textContent = options.textLayer ?? "";
+      surface.textLayer.replaceChildren(span);
       return Promise.resolve(view);
     },
     destroy: () => {

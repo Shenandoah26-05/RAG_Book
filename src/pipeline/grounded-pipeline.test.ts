@@ -65,6 +65,7 @@ function fake(scores: readonly number[], deltas: readonly ChatDelta[], fail?: Er
         stream: stream(),
         citations: prompt.citations,
         prompt,
+        retrieval: { candidates: included, ranked: included, retrievers: [] },
         trace: new Trace(),
       };
       return Promise.resolve(answer);

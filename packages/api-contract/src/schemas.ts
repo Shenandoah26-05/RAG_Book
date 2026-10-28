@@ -13,6 +13,11 @@ export const MAX_QUESTION_CHARS = 2000;
 export const MAX_K = 50;
 /** The most earlier turns a request may carry. The server reads only the last few of them. */
 export const MAX_HISTORY_TURNS = 10;
+/**
+ * The longest selected passage a question may carry, in characters. It goes into the prompt beside
+ * the sources, and a local model has a small window, so it is about half a page.
+ */
+export const MAX_SELECTION_CHARS = 2000;
 /** The longest earlier question or answer, in characters. */
 export const MAX_TURN_CHARS = 8000;
 
@@ -64,6 +69,19 @@ export const askFilterSchema = z.strictObject({
 });
 export type AskFilter = z.infer<typeof askFilterSchema>;
 
+/**
+ * A passage the reader selected on the page before asking ("explain this"). It is searched for as
+ * well as the question, and the model is shown it as quoted context. It is not a source: answers still
+ * cite the numbered sources, which normally include the passage's own chunk.
+ */
+export const selectionSchema = z.strictObject({
+  /** The selected words, as the page shows them. */
+  text: z.string().trim().min(1, "must not be blank").max(MAX_SELECTION_CHARS),
+  /** The page the reader was on, when known. */
+  page: page.optional(),
+});
+export type Selection = z.infer<typeof selectionSchema>;
+
 /** The body of `POST /ask`. */
 export const askRequestSchema = z.strictObject({
   question: z.string().trim().min(1, "must not be blank").max(MAX_QUESTION_CHARS),
@@ -72,6 +90,13 @@ export const askRequestSchema = z.strictObject({
   /** The conversation so far, oldest first. The server keeps none: the client sends it. */
   history: z.array(turnSchema).max(MAX_HISTORY_TURNS).optional(),
   filter: askFilterSchema.optional(),
+  /**
+   * Also send an `inspection` event: the chunks retrieval found, how reranking moved them, and the
+   * prompt (RAG-105). Off unless asked, since it carries the whole prompt.
+   */
+  inspect: z.boolean().optional(),
+  /** A passage the reader selected, to ask about. */
+  selection: selectionSchema.optional(),
 });
 export type AskRequest = z.infer<typeof askRequestSchema>;
 
@@ -147,6 +172,70 @@ export const wireTraceSchema = z.strictObject({
 });
 export type WireTrace = z.infer<typeof wireTraceSchema>;
 
+/** A retriever's own rank and score for a chunk, before the results were fused. */
+export const wireFoundBySchema = z.strictObject({
+  retriever: z.string(),
+  rank: z.number().int().min(1),
+  score: z.number(),
+});
+export type WireFoundBy = z.infer<typeof wireFoundBySchema>;
+
+/**
+ * What became of a retrieved chunk. `used` is in the prompt; `duplicate` and `over-budget` reached the
+ * assembler and were left out; `cut` did not survive reranking.
+ */
+export const CHUNK_FATES = ["used", "duplicate", "over-budget", "cut"] as const;
+export const chunkFateSchema = z.enum(CHUNK_FATES);
+export type ChunkFate = z.infer<typeof chunkFateSchema>;
+
+/** A chunk retrieval found for the question, and where it went from there. */
+export const wireCandidateSchema = z.strictObject({
+  chunkId: chunkIdSchema,
+  pageStart: page,
+  pageEnd: page,
+  sectionPath: z.array(z.string()),
+  /** The start of the text, whitespace folded: enough to recognise the passage. */
+  snippet: z.string(),
+  /** Where retrieval ranked it, 1 for the best, and the score it gave. */
+  rank: z.number().int().min(1),
+  score: z.number(),
+  /** The `name` of the retriever that gave it to the reranker, e.g. "hybrid". */
+  retriever: z.string(),
+  /**
+   * The base retrievers that found it on their own, with their own ranks. Empty when the retriever
+   * does not report them. A parent chunk lists the retrievers that found its children.
+   */
+  foundBy: z.array(wireFoundBySchema),
+  /** Its place after reranking, or null if the reranker dropped it. */
+  finalRank: z.number().int().min(1).nullable(),
+  /** The reranker's score for it, or null if the reranker dropped it. */
+  finalScore: z.number().nullable(),
+  fate: chunkFateSchema,
+  /** The number it has in the prompt (`[n]`), for a chunk that was used. */
+  source: z.number().int().min(1).optional(),
+});
+export type WireCandidate = z.infer<typeof wireCandidateSchema>;
+
+/** The prompt, and how much of its token budget the sources took. */
+export const wirePromptSchema = z.strictObject({
+  /** `"<id>@<version>"` of the template. */
+  version: z.string(),
+  system: z.string(),
+  user: z.string(),
+  sourceTokens: z.number().int().min(0),
+  budget: z.number().int().min(0),
+  /** False when the book had no good enough source and the model was never called with this. */
+  sent: z.boolean(),
+});
+export type WirePrompt = z.infer<typeof wirePromptSchema>;
+
+/** What happened behind an answer, for the inspector (RAG-105). */
+export const wireInspectionSchema = z.strictObject({
+  candidates: z.array(wireCandidateSchema),
+  prompt: wirePromptSchema,
+});
+export type WireInspection = z.infer<typeof wireInspectionSchema>;
+
 /** `GET /pages/:n`: one page of the book, as text. */
 export const pageResponseSchema = z.strictObject({
   docId: docIdSchema,
@@ -216,6 +305,11 @@ export const traceEventSchema = z.strictObject({
   event: z.literal("trace"),
   data: z.strictObject({ trace: wireTraceSchema }),
 });
+/** The chunks and the prompt behind the answer. Sent only to a request that set `inspect`. */
+export const inspectionEventSchema = z.strictObject({
+  event: z.literal("inspection"),
+  data: z.strictObject({ inspection: wireInspectionSchema }),
+});
 /** The last event of a successful answer, with the checks on the finished text. */
 export const doneEventSchema = z.strictObject({
   event: z.literal("done"),
@@ -242,6 +336,7 @@ export const askEventSchema = z.discriminatedUnion("event", [
   tokenEventSchema,
   citationsEventSchema,
   traceEventSchema,
+  inspectionEventSchema,
   doneEventSchema,
   errorEventSchema,
 ]);

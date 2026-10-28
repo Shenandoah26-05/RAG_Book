@@ -8,6 +8,8 @@ export type { LogFields, Logger, LoggerOptions, LogLevel, LogRecord } from "./lo
 export { systemClock } from "./clock.js";
 export type { Clock } from "./clock.js";
 export { currentTrace, withTrace } from "./trace-scope.js";
+export { currentProbe, RetrievalProbe, withProbe } from "./retrieval-probe.js";
+export type { RetrieverCall } from "./retrieval-probe.js";
 export {
   costOf,
   EMBED_CALL_STAGE,

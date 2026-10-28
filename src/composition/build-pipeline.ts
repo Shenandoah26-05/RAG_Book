@@ -11,6 +11,8 @@ import {
   isOrderingName,
   ORDERING_NAMES,
   parsePromptTemplate,
+  ProbedRetriever,
+  SelectionTransformer,
   TemplateContextAssembler,
 } from "../strategies/index.js";
 import { buildChunkerRegistry } from "./build-chunkers.js";
@@ -136,7 +138,12 @@ export async function buildPipelineWithConfig(
 
   // no `rerank` here: the pipeline has a rerank stage of its own
   const retriever = withVariantSearch(
-    buildRetriever(config.retrieval, { index, embedder }),
+    // each base retriever reports what it found on its own, for the inspector (RAG-105)
+    buildRetriever(config.retrieval, {
+      index,
+      embedder,
+      wrap: (inner) => new ProbedRetriever(inner),
+    }),
     config.queryTransform,
   );
   const rerank = resolveRerank(config.rerank, {
@@ -172,7 +179,11 @@ export async function buildPipelineWithConfig(
 
   const pipeline = new RagPipeline({
     // rewriting and HyDE use the answering model, like the "llm" reranker
-    transformer: await buildQueryTransformer(config.queryTransform, { llm, promptsDir }),
+    // a selected passage is searched for as well as the question (RAG-104); the wrapper is invisible
+    // without one, and reports the name of the transformer it wraps
+    transformer: new SelectionTransformer(
+      await buildQueryTransformer(config.queryTransform, { llm, promptsDir }),
+    ),
     retriever,
     reranker: rerank.reranker,
     rerankCandidates: rerank.candidates,

@@ -15,6 +15,7 @@ export type {
   ConversationTurn,
   FinishReason,
   Query,
+  Selection,
 } from "./chat.js";
 export { INDEX_MANIFEST_VERSION } from "./index-manifest.js";
 export type { IndexManifest } from "./index-manifest.js";

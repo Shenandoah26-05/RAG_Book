@@ -4,6 +4,9 @@ import type {
   FeedbackRating,
   Turn,
   WireCitation,
+  Turn,
+  WireCitation,
+  WireInspection,
   WireTrace,
 } from "@rag-book/api-contract";
 
@@ -28,6 +31,10 @@ export interface TurnFeedback {
   /** `saving`: sent, not yet acknowledged. `failed`: the API did not keep it; `error` says why. */
   readonly status: "saving" | "saved" | "failed";
   readonly error?: string;
+/** A passage the reader selected on the page and asked about. */
+export interface AskedPassage {
+  readonly text: string;
+  readonly page?: number;
 }
 
 /** One question and what has come back for it. */
@@ -37,6 +44,13 @@ export interface ChatTurn {
   /** Names this answer to the API when it is rated (a version 4 UUID), so a rating can be replaced. */
   readonly answerId: string;
   readonly question: string;
+  /** The passage the reader selected when they asked, if they did. */
+  readonly selection?: AskedPassage;
+  /**
+   * The part of the book the search was limited to, as the titles from the chapter down. Absent when
+   * the whole book was searched. Kept so that a refusal can be asked again more widely.
+   */
+  readonly scope?: readonly string[];
   /** The answer so far: the `token` events joined. */
   readonly answer: string;
   readonly status: TurnStatus;
@@ -52,6 +66,8 @@ export interface ChatTurn {
   readonly trace?: WireTrace;
   /** The reader's rating of the answer, once given. */
   readonly feedback?: TurnFeedback;
+  /** What happened behind the answer, for the inspector (RAG-105). Only when the question asked for it. */
+  readonly inspection?: WireInspection;
 }
 
 export interface ChatState {
@@ -66,6 +82,9 @@ export type ChatAction =
       readonly id: number;
       readonly answerId: string;
       readonly question: string;
+      readonly question: string;
+      readonly selection?: AskedPassage;
+      readonly scope?: readonly string[];
     }
   | { readonly type: "event"; readonly id: number; readonly event: AskEvent }
   | { readonly type: "failed"; readonly id: number; readonly message: string }
@@ -87,6 +106,8 @@ function applyEvent(turn: ChatTurn, event: AskEvent): ChatTurn {
       return { ...turn, citations: event.data.citations };
     case "trace":
       return { ...turn, trace: event.data.trace };
+    case "inspection":
+      return { ...turn, inspection: event.data.inspection };
     case "done": {
       const { answered, refusal, unknownCitations, complete } = event.data;
       return {
@@ -120,6 +141,8 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
             id: action.id,
             answerId: action.answerId,
             question: action.question,
+            ...(action.selection === undefined ? {} : { selection: action.selection }),
+            ...(action.scope === undefined ? {} : { scope: action.scope }),
             answer: "",
             status: "streaming",
             citations: [],

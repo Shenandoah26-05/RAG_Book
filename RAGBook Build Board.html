@@ -987,7 +987,7 @@ const T = [
 {id:"RAG-105",m:"M10",type:"feature",pts:3,title:"Retrieval inspector panel",deps:["RAG-103"],
  desc:"A learning view of what happened behind each answer.",
  ac:["Toggle shows retrieved chunks, scores, which retriever found each, and rerank changes","Shows the assembled prompt and token count"],
- arch:"Renders the Trace; no new pipeline code.",
+ arch:"Renders the Trace plus an opt-in inspection event. The wire Trace holds only flat stage counts, so the pipeline now keeps the candidate and reranked lists it already had, and a request-scoped probe records what each base retriever found (no change to any stage).",
  learn:"Making a system explain itself."},
 {id:"RAG-106",m:"M10",type:"feature",pts:2,title:"Answer feedback loop",deps:["RAG-103"],
  desc:"Turn reader feedback into future evaluation data.",

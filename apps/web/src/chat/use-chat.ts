@@ -4,17 +4,35 @@ import type { ApiClient } from "../api/client.js";
 import { chatReducer, historyOf, initialChat } from "./chat-state.js";
 import type { ChatTurn } from "./chat-state.js";
 import { newAnswerId } from "./answer-id.js";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
+import type { AskRequest } from "@rag-book/api-contract";
+import type { ApiClient } from "../api/client.js";
+import { chatReducer, historyOf, initialChat } from "./chat-state.js";
+import type { AskedPassage, ChatTurn } from "./chat-state.js";
+
+/** What a question may carry besides its words. */
+export interface SendOptions {
+  /** A passage the reader selected on the page, to ask about. */
+  readonly selection?: AskedPassage | undefined;
+  /**
+   * Limits the search to one part of the book: the titles from the chapter down. Absent: the whole
+   * book.
+   */
+  readonly scope?: readonly string[] | undefined;
+}
 
 export interface ChatControls {
   readonly turns: readonly ChatTurn[];
   /** An answer is arriving: a new question waits for it. */
   readonly busy: boolean;
   /** Asks a question. Ignored when it is blank or an answer is still arriving. */
-  readonly send: (question: string) => void;
+  readonly send: (question: string, options?: SendOptions) => void;
   /** Stops the answer that is arriving; what has arrived stays. */
   readonly stop: () => void;
-  /** Asks a failed question again. */
+  /** Asks a failed question again, with the same passage and the same limits. */
   readonly retry: (id: number) => void;
+  /** Asks a question again over the whole book, when a search limited to a chapter found nothing. */
+  readonly widen: (id: number) => void;
   /** Starts a new conversation. */
   readonly clear: () => void;
   /**
@@ -22,6 +40,11 @@ export interface ChatControls {
    * a reader can add the note after the thumb, or change their mind.
    */
   readonly rate: (id: number, rating: FeedbackRating, note?: string) => void;
+   * Whether new questions ask for an inspection (RAG-105): the chunks behind the answer and the
+   * prompt. It applies to questions asked from now on; answers already given keep what they have.
+   */
+  readonly inspect: boolean;
+  readonly setInspect: (on: boolean) => void;
 }
 
 const describe = (error: unknown): string =>
@@ -40,6 +63,10 @@ const describe = (error: unknown): string =>
  */
 export function useChat(client: ApiClient, docId: string | undefined): ChatControls {
   const [state, dispatch] = useReducer(chatReducer, initialChat);
+  const [inspect, setInspect] = useState(false);
+  // read when a question is sent, so a retry after the toggle changed asks as the toggle says now
+  const inspectRef = useRef(inspect);
+  inspectRef.current = inspect;
   const nextId = useRef(1);
   const current = useRef<{ id: number; controller: AbortController } | undefined>(undefined);
   // the latest turns, for the history of a question asked from a callback
@@ -56,8 +83,9 @@ export function useChat(client: ApiClient, docId: string | undefined): ChatContr
   const busy = state.turns.at(-1)?.status === "streaming";
 
   const send = useCallback(
-    (raw: string) => {
+    (raw: string, options: SendOptions = {}) => {
       const question = raw.trim();
+      const { selection, scope } = options;
       if (question === "" || current.current !== undefined) return;
 
       const id = nextId.current++;
@@ -68,8 +96,25 @@ export function useChat(client: ApiClient, docId: string | undefined): ChatContr
         question,
         ...(history.length === 0 ? {} : { history: [...history] }),
         ...(docId === undefined ? {} : { filter: { documents: [docId] } }),
+        ...(inspectRef.current ? { inspect: true } : {}),
+        ...(docId === undefined && scope === undefined
+          ? {}
+          : {
+              filter: {
+                ...(docId === undefined ? {} : { documents: [docId] }),
+                ...(scope === undefined ? {} : { section: [...scope] }),
+              },
+            }),
+        ...(selection === undefined ? {} : { selection }),
       };
       dispatch({ type: "ask", id, answerId: newAnswerId(), question });
+      dispatch({
+        type: "ask",
+        id,
+        question,
+        ...(selection === undefined ? {} : { selection }),
+        ...(scope === undefined ? {} : { scope }),
+      });
 
       void (async () => {
         try {
@@ -108,7 +153,19 @@ export function useChat(client: ApiClient, docId: string | undefined): ChatContr
       const turn = turnsRef.current.find((candidate) => candidate.id === id);
       if (turn === undefined || turn.status !== "failed") return;
       dispatch({ type: "remove", id });
-      send(turn.question);
+      send(turn.question, {
+        ...(turn.selection === undefined ? {} : { selection: turn.selection }),
+        ...(turn.scope === undefined ? {} : { scope: turn.scope }),
+      });
+    },
+    [send],
+  );
+
+  const widen = useCallback(
+    (id: number) => {
+      const turn = turnsRef.current.find((candidate) => candidate.id === id);
+      if (turn === undefined) return;
+      send(turn.question, turn.selection === undefined ? {} : { selection: turn.selection });
     },
     [send],
   );
@@ -148,4 +205,6 @@ export function useChat(client: ApiClient, docId: string | undefined): ChatContr
   );
 
   return { turns: state.turns, busy, send, stop, retry, clear, rate };
+  return { turns: state.turns, busy, send, stop, retry, clear, inspect, setInspect };
+  return { turns: state.turns, busy, send, stop, retry, widen, clear };
 }

@@ -3,10 +3,12 @@
 The browser app of the live book: a Vite + React + TypeScript single-page app. It is the book reader
 (RAG-102: the PDF drawn with pdf.js, the table of contents, page controls, a remembered reading
 position) with a chat panel beside it (RAG-103: answers stream in, each `[n]` is a button that goes to
-the cited page and marks the passage). Chosen in
+the cited page and marks the passage), and an **Inspect** toggle (RAG-105) that adds, under each new
+answer, the chunks behind it, who found them, how reranking moved them, and the prompt. Chosen in
 [ADR-0006](../../docs/adr/0006-web-stack-and-workspace.md); the designs are in
-[docs/design/rag-102-book-reader.md](../../docs/design/rag-102-book-reader.md) and
-[docs/design/rag-103-chat-citations.md](../../docs/design/rag-103-chat-citations.md).
+[docs/design/rag-102-book-reader.md](../../docs/design/rag-102-book-reader.md),
+[docs/design/rag-103-chat-citations.md](../../docs/design/rag-103-chat-citations.md) and
+[docs/design/rag-105-retrieval-inspector.md](../../docs/design/rag-105-retrieval-inspector.md).
 
 ## Run it
 
@@ -23,6 +25,11 @@ several. `#page=12` opens at page 12.
 The chat needs the model (`pnpm api` builds the same pipeline as `pnpm chat`, so Ollama must be running).
 Enter sends a question, Shift+Enter starts a new line, Stop ends an answer, and Esc clears the passage
 marked on the page.
+
+**Ask about a passage** (RAG-104): select text on the page and press "Ask about this". The passage appears
+above the box (with "Explain" and "Summarize"), is sent with your next question as extra context, and the
+search is limited to the chapter you are in. "Whole book" widens it, and a question that found nothing in
+a chapter offers to ask the whole book instead.
 
 | Command          | Does                                                 |
 | ---------------- | ---------------------------------------------------- |
@@ -45,8 +52,9 @@ src/
   pdf/                the PdfBook interface (what components know) and the pdf.js implementation
   chat/               the conversation: reducer, history, streaming hook, `[n]` parsing
   highlight/          where a cited passage is on the page: geometry, fetching, marking text
+  selection/          reading what the reader selected on the page, and cleaning it into a passage
   components/         Reader, Toc, PageNav, PdfPage (canvas + marks), TextPage (fallback),
-                      ChatPanel, AnswerText, SourceBar
+                      ChatPanel, AnswerText, SourceBar, SelectionPopover
 ```
 
 Components know a `PdfBook` interface, not pdf.js, so pdf.js (a large library) loads only when a book is
