@@ -37,3 +37,4 @@ export type {
   VariantCost,
   VariantSummary,
 } from "./experiment.js";
+export type { FeedbackEntry, FeedbackRating } from "./feedback.js";

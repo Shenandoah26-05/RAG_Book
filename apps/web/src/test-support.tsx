@@ -4,6 +4,8 @@ import type {
   AskEvent,
   AskRequest,
   BookResponse,
+  FeedbackRequest,
+  FeedbackResponse,
   HighlightResponse,
   PageResponse,
   WireCitation,
@@ -122,6 +124,8 @@ export interface FakeOptions {
   pageText?: (number: number) => { text: string; start: number };
   /** Make `ask` reject at once (the request itself fails). */
   askFails?: Error;
+  /** What sending feedback does. Default: it is kept at once. A test can hold it to look in between. */
+  feedback?: (request: FeedbackRequest) => Promise<FeedbackResponse>;
 }
 
 export interface Fakes {
@@ -130,6 +134,8 @@ export interface Fakes {
   getBook: ReturnType<typeof vi.fn>;
   ask: ReturnType<typeof vi.fn>;
   getHighlights: ReturnType<typeof vi.fn>;
+  /** What each rating was sent as, in order. */
+  feedbacks: FeedbackRequest[];
   /** The stream of each question asked, in order. */
   channels: Channel[];
   /** What each question was sent as. */
@@ -149,6 +155,7 @@ export function fakes(options: FakeOptions = {}): Fakes {
   const channels: Channel[] = [];
   const requests: AskRequest[] = [];
   const aborted: boolean[] = [];
+  const feedbacks: FeedbackRequest[] = [];
   let destroyed = 0;
 
   const view: PageView = {
@@ -198,6 +205,13 @@ export function fakes(options: FakeOptions = {}): Fakes {
     getBook,
     ask,
     getHighlights,
+    sendFeedback: (request) => {
+      feedbacks.push(request);
+      return (
+        options.feedback?.(request) ??
+        Promise.resolve<FeedbackResponse>({ answerId: request.answerId, saved: true })
+      );
+    },
     getPage: (number) => {
       const { text, start } = options.pageText?.(number) ?? {
         text: `Text of page ${number.toString()}.`,
@@ -222,6 +236,7 @@ export function fakes(options: FakeOptions = {}): Fakes {
     ask,
     getHighlights,
     channels,
+    feedbacks,
     requests,
     aborted,
     rendered,

@@ -2,10 +2,11 @@ import {
   askRequestSchema,
   bookRequestSchema,
   chunkRequestSchema,
+  feedbackRequestSchema,
   highlightRequestSchema,
   pageRequestSchema,
 } from "@rag-book/api-contract";
-import type { ErrorBody, ErrorResponse } from "@rag-book/api-contract";
+import type { ErrorBody, ErrorResponse, FeedbackResponse } from "@rag-book/api-contract";
 import type { ZodType } from "zod";
 import { Hono } from "hono";
 import type { Context } from "hono";
@@ -21,6 +22,7 @@ import type { ErrorAnswer } from "./errors.js";
 import { toWireHighlights } from "./highlights.js";
 import { parseRange } from "./range.js";
 import {
+  toFeedbackEntry,
   toMetadataFilter,
   toWireBook,
   toWireChunk,
@@ -45,6 +47,8 @@ export interface AppOptions {
    */
   readonly allowedOrigins?: readonly string[];
   readonly logger?: Logger;
+  /** The clock, for the time a rating is stamped with. Default: the real one. */
+  readonly now?: () => Date;
 }
 
 /** An async iterable of bytes as a response body. Cancelling the body stops the iteration. */
@@ -98,6 +102,7 @@ function check<T>(
  * the answer in the contract's shapes. No retrieval, ranking or prompting happens here.
  *
  *   POST /ask         a question; the answer streams back as server-sent events (see below)
+ *   POST /feedback    a rating of an answer, added to the file `pnpm eval:promote` reads
  *   GET  /pages/:n    one page of the book, as text
  *   GET  /chunks/:id  one passage as the index holds it
  *
@@ -108,6 +113,7 @@ function check<T>(
  */
 export function createApp(services: ApiServices, options: AppOptions = {}): Hono {
   const logger = options.logger ?? noopLogger;
+  const now = options.now ?? ((): Date => new Date());
   const app = new Hono();
 
   app.use(
@@ -224,6 +230,53 @@ export function createApp(services: ApiServices, options: AppOptions = {}): Hono
           await send("error", describeError(error).body);
         }
       });
+    },
+  );
+
+  // ---- POST /feedback ----
+
+  // The page sends the answer back with its rating: the server keeps no conversation, so this is the
+  // only place the question, the answer and its sources come together. Same guards as /ask.
+  app.post(
+    "/feedback",
+    bodyLimit({
+      maxSize: MAX_BODY_BYTES,
+      onError: (c) =>
+        fail(
+          c,
+          invalidRequest(
+            `The request is larger than ${MAX_BODY_BYTES.toString()} bytes.`,
+            undefined,
+            413,
+          ),
+        ),
+    }),
+    async (c) => {
+      if (!(c.req.header("content-type") ?? "").toLowerCase().startsWith("application/json")) {
+        return fail(c, invalidRequest("Send the request as application/json.", undefined, 415));
+      }
+      let body: unknown;
+      try {
+        body = await c.req.json();
+      } catch {
+        return fail(c, invalidRequest("The body is not valid JSON."));
+      }
+      const request = check(feedbackRequestSchema, body);
+      if (!request.ok) return fail(c, request.answer);
+      try {
+        await services.feedback.record(
+          toFeedbackEntry(request.value, {
+            savedAt: now().toISOString(),
+            index: services.namespace,
+            model: services.model,
+          }),
+        );
+      } catch (error) {
+        logger.error("feedback could not be saved", { error: String(error) });
+        return fail(c, describeError(error));
+      }
+      const saved: FeedbackResponse = { answerId: request.value.answerId, saved: true };
+      return c.json(saved);
     },
   );
 

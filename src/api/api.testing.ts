@@ -5,6 +5,7 @@ import type {
   AssembledPrompt,
   Chunk,
   ChatDelta,
+  FeedbackEntry,
   ChunkId,
   DocId,
   ParsedDocument,
@@ -153,6 +154,8 @@ export interface AskCall {
 export interface FakeServices extends ApiServices {
   readonly asked: AskCall[];
   readonly loads: DocId[];
+  /** The ratings recorded, in order. */
+  readonly recorded: FeedbackEntry[];
 }
 
 export interface FakeServicesOptions {
@@ -166,17 +169,29 @@ export interface FakeServicesOptions {
   readonly pdfs?: ReadonlyMap<string, SourceFile>;
   /** Make loading a document fail this many times first. */
   readonly loadFailures?: number;
+  /** Make recording feedback fail with this. */
+  readonly feedbackFailure?: Error;
 }
 
 export function fakeServices(options: FakeServicesOptions = {}): FakeServices {
   const asked: AskCall[] = [];
   const loads: DocId[] = [];
+  const recorded: FeedbackEntry[] = [];
   let failures = options.loadFailures ?? 0;
   const documents = options.documents ?? new Map([[DOC, BOOK]]);
   const stored = new Map<ChunkId, Chunk>((options.chunks ?? [CHUNK]).map((c) => [c.id, c]));
   return {
     asked,
     loads,
+    recorded,
+    feedback: {
+      location: "fake-candidates.jsonl",
+      record: (entry) => {
+        if (options.feedbackFailure !== undefined) return Promise.reject(options.feedbackFailure);
+        recorded.push(entry);
+        return Promise.resolve();
+      },
+    },
     pipeline: {
       ask: async (question, askOptions) => {
         const call = { question, options: askOptions };

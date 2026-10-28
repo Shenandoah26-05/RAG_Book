@@ -20,6 +20,7 @@ if ("error" in args) {
       ...(args.variant === undefined ? {} : { variant: args.variant }),
       ...(args.processedDir === undefined ? {} : { processedDir: args.processedDir }),
       ...(args.rawDir === undefined ? {} : { rawDir: args.rawDir }),
+      ...(args.feedbackFile === undefined ? {} : { feedbackFile: args.feedbackFile }),
       ...(args.indexDir === undefined ? {} : { indexDir: args.indexDir }),
       ...(args.cacheDir === undefined ? {} : { cacheDir: args.cacheDir }),
     });
@@ -33,6 +34,7 @@ if ("error" in args) {
         url: `http://${info.address}:${info.port.toString()}`,
         index: services.namespace,
         model: services.model,
+        feedback: services.feedback.location,
       });
     });
     // Ctrl+C: stop taking requests and let the one in progress end

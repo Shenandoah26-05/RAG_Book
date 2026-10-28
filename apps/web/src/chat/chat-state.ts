@@ -1,5 +1,11 @@
 import { MAX_HISTORY_TURNS, MAX_TURN_CHARS } from "@rag-book/api-contract";
-import type { AskEvent, Turn, WireCitation, WireTrace } from "@rag-book/api-contract";
+import type {
+  AskEvent,
+  FeedbackRating,
+  Turn,
+  WireCitation,
+  WireTrace,
+} from "@rag-book/api-contract";
 
 /** How one question is going. */
 export type TurnStatus =
@@ -12,10 +18,24 @@ export type TurnStatus =
   /** It failed; `error` says why. */
   | "failed";
 
+/**
+ * What the reader said about an answer, and whether the API has it. The note can be added after the
+ * rating; each is sent again with the same `answerId`, and the newest wins.
+ */
+export interface TurnFeedback {
+  readonly rating: FeedbackRating;
+  readonly note?: string;
+  /** `saving`: sent, not yet acknowledged. `failed`: the API did not keep it; `error` says why. */
+  readonly status: "saving" | "saved" | "failed";
+  readonly error?: string;
+}
+
 /** One question and what has come back for it. */
 export interface ChatTurn {
   /** Unique in the conversation; a citation chip is addressed by it. */
   readonly id: number;
+  /** Names this answer to the API when it is rated (a version 4 UUID), so a rating can be replaced. */
+  readonly answerId: string;
   readonly question: string;
   /** The answer so far: the `token` events joined. */
   readonly answer: string;
@@ -30,6 +50,8 @@ export interface ChatTurn {
   readonly complete: boolean;
   readonly error?: string;
   readonly trace?: WireTrace;
+  /** The reader's rating of the answer, once given. */
+  readonly feedback?: TurnFeedback;
 }
 
 export interface ChatState {
@@ -39,10 +61,16 @@ export interface ChatState {
 export const initialChat: ChatState = { turns: [] };
 
 export type ChatAction =
-  | { readonly type: "ask"; readonly id: number; readonly question: string }
+  | {
+      readonly type: "ask";
+      readonly id: number;
+      readonly answerId: string;
+      readonly question: string;
+    }
   | { readonly type: "event"; readonly id: number; readonly event: AskEvent }
   | { readonly type: "failed"; readonly id: number; readonly message: string }
   | { readonly type: "stopped"; readonly id: number }
+  | { readonly type: "rating"; readonly id: number; readonly feedback: TurnFeedback }
   | { readonly type: "remove"; readonly id: number }
   | { readonly type: "clear" };
 
@@ -90,6 +118,7 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
           ...state.turns,
           {
             id: action.id,
+            answerId: action.answerId,
             question: action.question,
             answer: "",
             status: "streaming",
@@ -110,6 +139,11 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
     case "stopped":
       return update(state, action.id, (turn) =>
         turn.status === "streaming" ? { ...turn, status: "stopped", complete: false } : turn,
+      );
+    case "rating":
+      // only a finished answer is rated; the last word on it replaces the one before
+      return update(state, action.id, (turn) =>
+        turn.status === "done" ? { ...turn, feedback: action.feedback } : turn,
       );
     case "remove":
       return { turns: state.turns.filter((turn) => turn.id !== action.id) };

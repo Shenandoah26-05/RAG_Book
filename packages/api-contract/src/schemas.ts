@@ -283,3 +283,47 @@ export const bookResponseSchema = z.strictObject({
   outline: z.array(wireOutlineEntrySchema),
 });
 export type BookResponse = z.infer<typeof bookResponseSchema>;
+
+// ---- feedback on an answer (RAG-106) ----
+
+/** The longest note a reader may leave with a rating, in characters. */
+export const MAX_FEEDBACK_NOTE_CHARS = 1000;
+/** The most sources an answer's feedback may carry. */
+export const MAX_FEEDBACK_CITATIONS = 50;
+/** A random (version 4) UUID, which the web app makes once per answer. */
+export const ANSWER_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
+export const FEEDBACK_RATINGS = ["up", "down"] as const;
+export const feedbackRatingSchema = z.enum(FEEDBACK_RATINGS);
+export type FeedbackRating = z.infer<typeof feedbackRatingSchema>;
+
+/**
+ * The body of `POST /feedback`: a rating of one answer, with the answer itself. The server keeps no
+ * conversation, so the page that holds the answer sends it back.
+ *
+ * Sending feedback for the same `answerId` again replaces the earlier one (the rating changed, or a
+ * note was added): the newest wins.
+ */
+export const feedbackRequestSchema = z.strictObject({
+  /** Names the answer; made by the page, once per answer. */
+  answerId: z.string().regex(ANSWER_ID, "must be a version 4 UUID"),
+  rating: feedbackRatingSchema,
+  note: z.string().trim().max(MAX_FEEDBACK_NOTE_CHARS).optional(),
+  question: z.string().trim().min(1).max(MAX_QUESTION_CHARS),
+  /** Empty for a question the book declined to answer. */
+  answer: z.string().max(MAX_TURN_CHARS),
+  /** Why the book declined, when it did. */
+  refusal: z.string().max(MAX_TURN_CHARS).optional(),
+  /** The book the question was asked of. */
+  docId: docIdSchema.optional(),
+  citations: z.array(wireCitationSchema).max(MAX_FEEDBACK_CITATIONS),
+  trace: wireTraceSchema.optional(),
+});
+export type FeedbackRequest = z.infer<typeof feedbackRequestSchema>;
+
+/** The answer to `POST /feedback`: the feedback is on disk. */
+export const feedbackResponseSchema = z.strictObject({
+  answerId: z.string(),
+  saved: z.literal(true),
+});
+export type FeedbackResponse = z.infer<typeof feedbackResponseSchema>;

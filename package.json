@@ -28,6 +28,7 @@
     "experiment": "tsx src/cli/experiment.ts",
     "report": "tsx src/cli/report.ts",
     "eval:validate": "tsx scripts/validate-eval-dataset.ts",
+    "eval:promote": "tsx scripts/promote-feedback.ts",
     "eval:smoke": "tsx src/cli/eval-smoke.ts",
     "bench:rerank": "tsx scripts/bench-rerankers.ts",
     "bench:hnsw": "tsx scripts/bench-hnsw.ts",

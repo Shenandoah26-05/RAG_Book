@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useReducer, useRef } from "react";
-import type { AskRequest } from "@rag-book/api-contract";
+import type { AskRequest, FeedbackRating, FeedbackRequest } from "@rag-book/api-contract";
 import type { ApiClient } from "../api/client.js";
 import { chatReducer, historyOf, initialChat } from "./chat-state.js";
 import type { ChatTurn } from "./chat-state.js";
+import { newAnswerId } from "./answer-id.js";
 
 export interface ChatControls {
   readonly turns: readonly ChatTurn[];
@@ -16,6 +17,11 @@ export interface ChatControls {
   readonly retry: (id: number) => void;
   /** Starts a new conversation. */
   readonly clear: () => void;
+  /**
+   * Rates a finished answer, with an optional note. Rating it again replaces the earlier rating, so
+   * a reader can add the note after the thumb, or change their mind.
+   */
+  readonly rate: (id: number, rating: FeedbackRating, note?: string) => void;
 }
 
 const describe = (error: unknown): string =>
@@ -63,7 +69,7 @@ export function useChat(client: ApiClient, docId: string | undefined): ChatContr
         ...(history.length === 0 ? {} : { history: [...history] }),
         ...(docId === undefined ? {} : { filter: { documents: [docId] } }),
       };
-      dispatch({ type: "ask", id, question });
+      dispatch({ type: "ask", id, answerId: newAnswerId(), question });
 
       void (async () => {
         try {
@@ -107,5 +113,39 @@ export function useChat(client: ApiClient, docId: string | undefined): ChatContr
     [send],
   );
 
-  return { turns: state.turns, busy, send, stop, retry, clear };
+  const rate = useCallback(
+    (id: number, rating: FeedbackRating, rawNote?: string) => {
+      const turn = turnsRef.current.find((candidate) => candidate.id === id);
+      if (turn?.status !== "done" || turn.feedback?.status === "saving") return;
+      const note = rawNote?.trim();
+      const feedback = { rating, ...(note === undefined || note === "" ? {} : { note }) };
+      const request: FeedbackRequest = {
+        answerId: turn.answerId,
+        rating,
+        ...(feedback.note === undefined ? {} : { note: feedback.note }),
+        question: turn.question,
+        answer: turn.answer,
+        ...(turn.refusal === undefined ? {} : { refusal: turn.refusal }),
+        ...(docId === undefined ? {} : { docId }),
+        citations: [...turn.citations],
+        ...(turn.trace === undefined ? {} : { trace: turn.trace }),
+      };
+      dispatch({ type: "rating", id, feedback: { ...feedback, status: "saving" } });
+      void client.sendFeedback(request).then(
+        () => {
+          dispatch({ type: "rating", id, feedback: { ...feedback, status: "saved" } });
+        },
+        (error: unknown) => {
+          dispatch({
+            type: "rating",
+            id,
+            feedback: { ...feedback, status: "failed", error: describe(error) },
+          });
+        },
+      );
+    },
+    [client, docId],
+  );
+
+  return { turns: state.turns, busy, send, stop, retry, clear, rate };
 }

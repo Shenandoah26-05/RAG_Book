@@ -1,5 +1,15 @@
-import { DirectorySourceFileStore, FileDocumentStore } from "../adapters/index.js";
-import type { ChunkStore, DocId, DocumentStore, SourceFileStore } from "../core/index.js";
+import {
+  DirectorySourceFileStore,
+  FileDocumentStore,
+  JsonlFeedbackStore,
+} from "../adapters/index.js";
+import type {
+  ChunkStore,
+  DocId,
+  DocumentStore,
+  FeedbackStore,
+  SourceFileStore,
+} from "../core/index.js";
 import type { GroundedPipeline } from "../pipeline/index.js";
 import type { PriceTable } from "../shared/index.js";
 import { DEFAULT_PROCESSED_DIR } from "./build-ingest.js";
@@ -8,6 +18,9 @@ import type { BuildPipelineOptions } from "./build-pipeline.js";
 
 /** Where `pnpm ingest` is usually pointed: the folder the reader looks in for the source PDF. */
 export const DEFAULT_RAW_DIR = "data/raw";
+
+/** Where readers' feedback is added, for `pnpm eval:promote` to read (RAG-106). */
+export const DEFAULT_FEEDBACK_FILE = "evals/candidates.jsonl";
 
 /**
  * What the HTTP API needs, and nothing more: the pipeline to ask, the stores to read pages and
@@ -22,6 +35,8 @@ export interface ApiServices {
   readonly chunks: Pick<ChunkStore, "get">;
   /** Finds the PDF a document was made from, for the reader (`GET /book/pdf`). */
   readonly sources: SourceFileStore;
+  /** Keeps a reader's rating of an answer, for `POST /feedback`. */
+  readonly feedback: FeedbackStore;
   /** The documents the index holds, which are the ones the answers (and so the pages) come from. */
   readonly documentIds: readonly DocId[];
   /** What the models cost, to put money on an answer. */
@@ -37,6 +52,8 @@ export interface BuildApiOptions extends BuildPipelineOptions {
   readonly processedDir?: string;
   /** Where the source PDFs are looked for, by content hash. Default `data/raw`. */
   readonly rawDir?: string;
+  /** The file feedback is added to. Default `evals/candidates.jsonl`. */
+  readonly feedbackFile?: string;
 }
 
 /**
@@ -51,6 +68,7 @@ export async function buildApiServices(options: BuildApiOptions = {}): Promise<A
   const {
     processedDir = DEFAULT_PROCESSED_DIR,
     rawDir = DEFAULT_RAW_DIR,
+    feedbackFile = DEFAULT_FEEDBACK_FILE,
     ...pipelineOptions
   } = options;
   const { pipeline, config, namespace, index } = await buildPipelineWithConfig(pipelineOptions);
@@ -59,6 +77,7 @@ export async function buildApiServices(options: BuildApiOptions = {}): Promise<A
     documents: new FileDocumentStore(processedDir),
     sources: new DirectorySourceFileStore(rawDir),
     chunks: index.chunkStore,
+    feedback: new JsonlFeedbackStore(feedbackFile),
     documentIds: index.manifest.documents,
     prices: config.pricing,
     namespace,

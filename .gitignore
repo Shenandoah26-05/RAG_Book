@@ -7,3 +7,6 @@ coverage
 data/
 # experiment runs are generated; commit a result by copying it somewhere deliberate
 evals/results/
+# readers' ratings of answers are real questions, kept local; a promoted dataset version is committed deliberately
+evals/candidates.jsonl
+evals/datasets/*.review.jsonl
