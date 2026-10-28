@@ -6,6 +6,14 @@ export interface ConversationTurn {
   readonly answer: string;
 }
 
+/** A passage the reader selected on the page before asking, with the page it was on. */
+export interface Selection {
+  /** The selected words, as the page shows them. */
+  readonly text: string;
+  /** 1-based page number, when known. */
+  readonly page?: number;
+}
+
 /** A user question as it enters retrieval. Query transforms produce new `Query` values. */
 export interface Query {
   readonly text: string;
@@ -21,6 +29,12 @@ export interface Query {
    * that is put to the answering model.
    */
   readonly variants?: readonly string[];
+  /**
+   * A passage the reader selected before asking ("explain this"). A transformer makes retrieval
+   * search for it too, and the assembler quotes it to the answering model, so `text` keeps only the
+   * question.
+   */
+  readonly selection?: Selection;
 }
 
 /** Points an answer back to the passage it came from. */

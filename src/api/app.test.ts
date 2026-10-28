@@ -178,6 +178,38 @@ describe("POST /ask", () => {
       expect(services.asked[1]?.options).not.toHaveProperty("k");
     });
 
+    it("passes the selected passage, with its page, to the pipeline", async () => {
+      const { app, services } = setup();
+      const selection = { text: "Embeddings turn sentences into vectors.", page: 4 };
+      await app.request("/ask", post({ question: "Explain this", selection }));
+      expect(services.asked[0]?.options).toMatchObject({ selection });
+    });
+
+    it("trims the selected passage, and leaves the option out when there is none", async () => {
+      const { app, services } = setup();
+      await app.request(
+        "/ask",
+        post({ question: "Explain this", selection: { text: "  a passage \n" } }),
+      );
+      await app.request("/ask", post({ question: "Plain question" }));
+      expect(services.asked[0]?.options?.selection).toEqual({ text: "a passage" });
+      expect(services.asked[1]?.options).not.toHaveProperty("selection");
+    });
+
+    it("refuses a selection that is blank, too long or has unknown fields", async () => {
+      const { app, services } = setup();
+      for (const selection of [
+        { text: "   " },
+        { text: "x".repeat(2001) },
+        { text: "ok", page: 0 },
+        { text: "ok", extra: true },
+      ]) {
+        const response = await app.request("/ask", post({ question: "Explain this", selection }));
+        expect(response.status, JSON.stringify(selection).slice(0, 40)).toBe(400);
+      }
+      expect(services.asked).toHaveLength(0);
+    });
+
     it("translates the filter into the library's, one clause for each part", async () => {
       const { app, services } = setup();
       await app.request(

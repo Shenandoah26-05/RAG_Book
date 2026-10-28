@@ -525,3 +525,141 @@ button.cite[aria-pressed="true"] {
     border-bottom: 1px solid var(--line);
   }
 }
+
+/* ---- the page's text layer: invisible text over the picture, so that it can be selected ----
+   pdf.js writes one span per run of text, placed and sized with the custom properties below. These
+   are its own rules for that, cut down to what is needed here (pdf_viewer.css has the full set, and
+   a viewer's chrome besides). The text is transparent: the picture is what is seen, and the
+   browser still paints a selection over it. */
+
+.textLayer {
+  position: absolute;
+  inset: 0;
+  overflow: clip;
+  line-height: 1;
+  text-align: initial;
+  text-size-adjust: none;
+  forced-color-adjust: none;
+  transform-origin: 0 0;
+  z-index: 1;
+  --min-font-size: 1;
+  --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size));
+  --min-font-size-inv: calc(1 / var(--min-font-size));
+}
+
+.textLayer :is(span, br) {
+  position: absolute;
+  color: transparent;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0% 0%;
+  user-select: text;
+}
+
+.textLayer > :not(.markedContent),
+.textLayer .markedContent span:not(.markedContent) {
+  --font-height: 0;
+  --scale-x: 1;
+  --rotate: 0deg;
+  font-size: calc(var(--text-scale-factor) * var(--font-height));
+  transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv));
+}
+
+.textLayer .markedContent {
+  display: contents;
+}
+
+.textLayer ::selection {
+  background: rgb(31 95 191 / 30%);
+}
+
+/* the line breaks between runs are selected too, and would show as a sliver at the corner */
+.textLayer br::selection {
+  background: transparent;
+}
+
+/* ---- asking about a passage you selected ---- */
+
+.selection-popover {
+  position: fixed;
+  z-index: 20;
+  width: 150px;
+  height: 34px;
+  padding: 0;
+  font-weight: 600;
+  color: var(--panel);
+  background: var(--accent);
+  border: 0;
+  border-radius: 999px;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 30%);
+}
+
+.selection-popover:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+.asked-about,
+.scope-note {
+  margin: 0 0 0.35rem;
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+.context-card {
+  margin: 0 0.9rem 0.5rem;
+  padding: 0.5rem 0.7rem;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent);
+  border-radius: var(--radius);
+}
+
+.context-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.context-card blockquote {
+  margin: 0.35rem 0;
+  max-height: 6.5rem;
+  overflow-y: auto;
+  color: var(--muted);
+  font-style: italic;
+  overflow-wrap: anywhere;
+}
+
+.context-card p {
+  margin: 0.25rem 0;
+  font-size: 0.85rem;
+}
+
+.quick {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.scope {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0 0.9rem 0.5rem;
+  font-size: 0.85rem;
+}
+
+.scope button {
+  padding: 0.15rem 0.55rem;
+}
+
+.scope button[aria-pressed="true"] {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.scope-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

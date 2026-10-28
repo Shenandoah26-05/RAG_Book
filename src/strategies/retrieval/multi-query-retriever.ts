@@ -21,6 +21,11 @@ export interface MultiQueryRetrieverOptions {
   readonly fusion: FusionStrategy;
   /** Each search is asked for `max(k, depth)` chunks, so a chunk that is 15th in one can still win. */
   readonly depth?: number;
+  /**
+   * The name this retriever reports. Default `multi-query(<inner>)`. Pass the inner retriever's name
+   * to be invisible where nothing else sets variants, so names in traces and reports stay as they were.
+   */
+  readonly name?: string;
 }
 
 /**
@@ -49,7 +54,7 @@ export class MultiQueryRetriever implements Retriever {
         `depth must be a whole number of 1 or more, got ${String(depth)}`,
       );
     }
-    this.name = `multi-query(${inner.name})`;
+    this.name = options.name ?? `multi-query(${inner.name})`;
     this.#inner = inner;
     this.#fusion = fusion;
     this.#depth = depth;

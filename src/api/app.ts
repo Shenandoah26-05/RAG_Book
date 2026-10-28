@@ -165,7 +165,7 @@ export function createApp(services: ApiServices, options: AppOptions = {}): Hono
       }
       const request = check(askRequestSchema, body);
       if (!request.ok) return fail(c, request.answer);
-      const { question, k, history, filter } = request.value;
+      const { question, k, history, filter, selection } = request.value;
 
       // stops the work when the reader goes away: between stages, or in the middle of the answer
       const controller = new AbortController();
@@ -187,6 +187,7 @@ export function createApp(services: ApiServices, options: AppOptions = {}): Hono
           signal: controller.signal,
           ...(k === undefined ? {} : { k }),
           ...(history === undefined || history.length === 0 ? {} : { history }),
+          ...(selection === undefined ? {} : { selection }),
           ...(metadataFilter === undefined ? {} : { filter: metadataFilter }),
         });
       } catch (error) {

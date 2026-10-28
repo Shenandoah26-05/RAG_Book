@@ -1,14 +1,17 @@
 import type { BookResponse, WireCitation } from "@rag-book/api-contract";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ApiClient } from "../api/client.js";
 import { useChat } from "../chat/use-chat.js";
 import { useHighlight } from "../highlight/use-highlight.js";
 import type { OpenPdf } from "../pdf/types.js";
-import { currentSectionTitle, indexOutline } from "../reader/outline.js";
+import { activeTrail, currentSectionTitle, indexOutline } from "../reader/outline.js";
 import type { PositionStorage } from "../reader/position.js";
 import { usePage } from "../reader/use-page.js";
 import { usePdf } from "../reader/use-pdf.js";
+import { useTextSelection } from "../selection/use-text-selection.js";
 import { ChatPanel } from "./ChatPanel.js";
+import type { ContextPassage } from "./ChatPanel.js";
+import { SelectionPopover } from "./SelectionPopover.js";
 import { PageNav } from "./PageNav.js";
 import { PdfPage } from "./PdfPage.js";
 import { SourceBar } from "./SourceBar.js";
@@ -46,6 +49,14 @@ export function Reader({ book, client, openPdf, storage }: ReaderProps) {
   const [selected, setSelected] = useState<Selected | undefined>(undefined);
   const highlight = useHighlight(selected?.citation, client, book.docId);
 
+  // what the reader has selected on the page, the passage they have chosen to ask about, and where
+  // the next question will look
+  const pageArea = useRef<HTMLElement>(null);
+  const onPage = useTextSelection(pageArea);
+  const [context, setContext] = useState<ContextPassage | undefined>(undefined);
+  const [focusToken, setFocusToken] = useState(0);
+  const [scopeChoice, setScopeChoice] = useState<"chapter" | "book" | undefined>(undefined);
+
   const { goTo } = controls;
   const follow = useCallback(
     (turnId: number, citation: WireCitation) => {
@@ -75,6 +86,37 @@ export function Reader({ book, client, openPdf, storage }: ReaderProps) {
   }, [cleared]);
 
   const section = currentSectionTitle(outline, controls.page);
+  // the chapter the reader is in (the outermost heading that holds the page), if the book has them
+  const chapter = activeTrail(outline, controls.page)[0]?.entry.title;
+  // Limited to the chapter when a passage is attached, because a passage points at where to look; the
+  // whole book otherwise, because an open question may be about any of it. The reader can change it.
+  const scopeMode: "chapter" | "book" =
+    chapter === undefined ? "book" : (scopeChoice ?? (context === undefined ? "book" : "chapter"));
+
+  const { selection: pageSelection, clear: clearPageSelection } = onPage;
+  const askAboutSelection = useCallback(() => {
+    if (pageSelection === undefined) return;
+    setContext({
+      text: pageSelection.text,
+      page: controls.page,
+      truncated: pageSelection.truncated,
+    });
+    clearPageSelection();
+    setFocusToken((n) => n + 1);
+  }, [pageSelection, clearPageSelection, controls.page]);
+
+  const { send } = chat;
+  const sendQuestion = useCallback(
+    (question: string) => {
+      send(question, {
+        selection: context === undefined ? undefined : { text: context.text, page: context.page },
+        scope: scopeMode === "chapter" && chapter !== undefined ? [chapter] : undefined,
+      });
+      // the passage belongs to this question; the next one starts without it
+      setContext(undefined);
+    },
+    [send, context, scopeMode, chapter],
+  );
   const showingImage = pdf.status === "ready";
   const boxes = highlight.status === "ready" ? highlight.pages.get(controls.page) : undefined;
   const passage =
@@ -93,7 +135,7 @@ export function Reader({ book, client, openPdf, storage }: ReaderProps) {
         <Toc outline={outline} page={controls.page} onGoTo={controls.goTo} />
       </aside>
 
-      <main className="reader-page">
+      <main className="reader-page" ref={pageArea}>
         {selected === undefined ? null : (
           <SourceBar
             citation={selected.citation}
@@ -129,6 +171,13 @@ export function Reader({ book, client, openPdf, storage }: ReaderProps) {
         <ChatPanel
           chat={chat}
           onCite={follow}
+          onSend={sendQuestion}
+          context={context}
+          onClearContext={() => {
+            setContext(undefined);
+          }}
+          scope={{ chapter, mode: scopeMode, onChange: setScopeChoice }}
+          focusToken={focusToken}
           active={
             selected === undefined
               ? undefined
@@ -136,6 +185,10 @@ export function Reader({ book, client, openPdf, storage }: ReaderProps) {
           }
         />
       </aside>
+
+      {pageSelection === undefined ? null : (
+        <SelectionPopover selection={pageSelection} onAsk={askAboutSelection} />
+      )}
 
       <footer className="reader-controls">
         <PageNav

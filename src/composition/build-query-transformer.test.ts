@@ -74,8 +74,12 @@ describe("buildQueryTransformer", () => {
 describe("withVariantSearch", () => {
   const inner: Retriever = { name: "hybrid", retrieve: () => Promise.resolve([]) };
 
-  it("leaves the retriever alone when nothing adds variants", () => {
-    expect(withVariantSearch(inner, settings)).toBe(inner);
+  it("wraps it even when no transformer adds variants, because a selection can", () => {
+    expect(withVariantSearch(inner, settings)).toBeInstanceOf(MultiQueryRetriever);
+  });
+
+  it("is invisible then: it reports the name of the retriever it wraps", () => {
+    expect(withVariantSearch(inner, settings).name).toBe("hybrid");
   });
 
   it.each([{ hyde: true }, { multiQuery: true }])("wraps it for %j", (change) => {

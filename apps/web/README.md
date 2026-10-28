@@ -24,6 +24,11 @@ The chat needs the model (`pnpm api` builds the same pipeline as `pnpm chat`, so
 Enter sends a question, Shift+Enter starts a new line, Stop ends an answer, and Esc clears the passage
 marked on the page.
 
+**Ask about a passage** (RAG-104): select text on the page and press "Ask about this". The passage appears
+above the box (with "Explain" and "Summarize"), is sent with your next question as extra context, and the
+search is limited to the chapter you are in. "Whole book" widens it, and a question that found nothing in
+a chapter offers to ask the whole book instead.
+
 | Command          | Does                                                 |
 | ---------------- | ---------------------------------------------------- |
 | `pnpm web`       | Dev server with hot reload                           |
@@ -45,8 +50,9 @@ src/
   pdf/                the PdfBook interface (what components know) and the pdf.js implementation
   chat/               the conversation: reducer, history, streaming hook, `[n]` parsing
   highlight/          where a cited passage is on the page: geometry, fetching, marking text
+  selection/          reading what the reader selected on the page, and cleaning it into a passage
   components/         Reader, Toc, PageNav, PdfPage (canvas + marks), TextPage (fallback),
-                      ChatPanel, AnswerText, SourceBar
+                      ChatPanel, AnswerText, SourceBar, SelectionPopover
 ```
 
 Components know a `PdfBook` interface, not pdf.js, so pdf.js (a large library) loads only when a book is
