@@ -118,6 +118,7 @@ export function fakeAnswer(spec: AnswerSpec): RagAnswer {
       sourceTokens: 120,
       budget: 3000,
     },
+    retrieval: { candidates: included, ranked: included, retrievers: [] },
     trace,
   };
 }

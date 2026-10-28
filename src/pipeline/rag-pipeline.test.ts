@@ -14,7 +14,7 @@ import type {
   TransformOptions,
   Retriever,
 } from "../core/index.js";
-import { RagError } from "../shared/index.js";
+import { currentProbe, RagError } from "../shared/index.js";
 import { makeCandidates } from "../testing/reranker-contract.testing.js";
 import { RagPipeline, readAnswer, STAGES } from "./rag-pipeline.js";
 import type { RagPipelineDeps } from "./rag-pipeline.js";
@@ -240,6 +240,59 @@ describe("RagPipeline.ask", () => {
     const { pipeline, spy } = build();
     await pipeline.ask("question");
     expect(spy.calls).not.toContain("chat");
+  });
+});
+
+describe("RagPipeline.ask: what retrieval did (RAG-105)", () => {
+  it("keeps the candidates the reranker was given and the ones it kept", async () => {
+    const { pipeline } = build();
+    const { retrieval } = await pipeline.ask("question");
+    expect(retrieval.candidates.map((c) => c.chunk.text)).toEqual(["a", "b", "c", "d"]);
+    expect(retrieval.ranked.map((c) => c.chunk.text)).toEqual(["d", "c"]);
+  });
+
+  it("has the candidates and the ranked list agree when there is nothing to rerank", async () => {
+    const { pipeline } = build({ rerankCandidates: 0 });
+    const { retrieval } = await pipeline.ask("question");
+    expect(retrieval.candidates.map((c) => c.chunk.text)).toEqual(["a", "b"]);
+  });
+
+  it("collects what the base retrievers reported while the question ran", async () => {
+    const reporting: Retriever = {
+      name: "hybrid",
+      retrieve: async (_q, options) => {
+        await Promise.resolve();
+        currentProbe()?.record("dense", ALL.slice(0, 2));
+        currentProbe()?.record("bm25", ALL.slice(1, 3));
+        return ALL.slice(0, options.k);
+      },
+    };
+    const { pipeline } = build({ retriever: reporting });
+    const { retrieval } = await pipeline.ask("question");
+    expect(retrieval.retrievers.map((r) => [r.name, r.results.length])).toEqual([
+      ["dense", 2],
+      ["bm25", 2],
+    ]);
+  });
+
+  it("has no retriever calls from a retriever that does not report", async () => {
+    const { pipeline } = build();
+    expect((await pipeline.ask("question")).retrieval.retrievers).toEqual([]);
+  });
+
+  it("keeps two questions at once apart", async () => {
+    const reporting: Retriever = {
+      name: "dense",
+      retrieve: async (q, options) => {
+        await new Promise((resolve) => setTimeout(resolve, q.text === "slow" ? 10 : 1));
+        currentProbe()?.record(q.text, []);
+        return ALL.slice(0, options.k);
+      },
+    };
+    const { pipeline } = build({ retriever: reporting });
+    const [slow, fast] = await Promise.all([pipeline.ask("slow"), pipeline.ask("fast")]);
+    expect(slow.retrieval.retrievers.map((r) => r.name)).toEqual(["slow"]);
+    expect(fast.retrieval.retrievers.map((r) => r.name)).toEqual(["fast"]);
   });
 });
 

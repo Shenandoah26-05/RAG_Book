@@ -11,7 +11,7 @@ import type {
   RetrievedChunk,
   SourceFile,
 } from "../core/index.js";
-import type { GroundedAnswer, GroundingReport } from "../pipeline/index.js";
+import type { GroundedAnswer, GroundingReport, RetrievalReport } from "../pipeline/index.js";
 import { makeDocId, Trace } from "../shared/index.js";
 import type { PriceTable } from "../shared/index.js";
 
@@ -74,7 +74,7 @@ export function chunkOf(text: string, extra: Partial<Chunk> = {}): Chunk {
 
 export const CHUNK = chunkOf("Embeddings map text to vectors.");
 
-const retrieved = (chunk: Chunk, rank: number): RetrievedChunk => ({
+export const retrieved = (chunk: Chunk, rank: number): RetrievedChunk => ({
   chunk,
   score: 1 / rank,
   rank,
@@ -90,6 +90,10 @@ export interface AnswerSpec {
   readonly grounding?: Partial<GroundingReport>;
   /** Citations: the chunks the prompt used. Default: one. Empty for a refusal. */
   readonly sources?: readonly Chunk[];
+  /** What retrieval and reranking did. Default: the sources, kept as they were retrieved. */
+  readonly retrieval?: RetrievalReport;
+  /** Parts of the prompt to change: what was dropped, the token counts. */
+  readonly prompt?: Partial<AssembledPrompt>;
   /** Stages to put on the trace, besides retrieve. */
   readonly stages?: readonly {
     stage: string;
@@ -100,7 +104,7 @@ export interface AnswerSpec {
 /** An answer as the grounded pipeline hands it back. */
 export function groundedAnswer(spec: AnswerSpec = {}): GroundedAnswer {
   const { pieces = ["Embeddings ", "are ", "vectors [1]."], failWith, sources = [CHUNK] } = spec;
-  const included = sources.map(retrieved);
+  const included = sources.map((chunk, i) => retrieved(chunk, i + 1));
   const citations = included.map(({ chunk }, i) => ({
     index: i + 1,
     chunkId: chunk.id,
@@ -134,6 +138,7 @@ export function groundedAnswer(spec: AnswerSpec = {}): GroundedAnswer {
     dropped: [],
     sourceTokens: 10,
     budget: 100,
+    ...spec.prompt,
   };
   const grounding: GroundingReport = {
     answered: true,
@@ -142,7 +147,8 @@ export function groundedAnswer(spec: AnswerSpec = {}): GroundedAnswer {
     complete: true,
     ...spec.grounding,
   };
-  return { stream, citations, prompt, trace, grounding: Promise.resolve(grounding) };
+  const retrieval = spec.retrieval ?? { candidates: included, ranked: included, retrievers: [] };
+  return { stream, citations, prompt, retrieval, trace, grounding: Promise.resolve(grounding) };
 }
 
 export interface AskCall {

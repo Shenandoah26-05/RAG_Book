@@ -9,10 +9,11 @@ import type {
   MetadataFilter,
   QueryTransformer,
   Reranker,
+  RetrievedChunk,
   Retriever,
 } from "../core/index.js";
-import { RagError, Trace, withTrace } from "../shared/index.js";
-import type { TraceSummary } from "../shared/index.js";
+import { RagError, RetrievalProbe, Trace, withProbe, withTrace } from "../shared/index.js";
+import type { RetrieverCall, TraceSummary } from "../shared/index.js";
 
 /** The stages of the pipeline, as the trace names them. */
 export const STAGES = ["transform", "retrieve", "rerank", "assemble", "generate"] as const;
@@ -46,6 +47,22 @@ export interface AskOptions {
   readonly signal?: AbortSignal;
 }
 
+/**
+ * What retrieval and reranking did, kept so a learning view can show it (RAG-105). The pipeline only
+ * keeps references to lists it already had; it computes nothing for it.
+ */
+export interface RetrievalReport {
+  /** What retrieval gave the reranker, best first. */
+  readonly candidates: readonly RetrievedChunk[];
+  /** What the reranker kept, best first. Scores here are the reranker's. */
+  readonly ranked: readonly RetrievedChunk[];
+  /**
+   * What each base retriever found on its own (dense and bm25 under a hybrid), when they report. Empty
+   * for a retriever that does not, and then only `candidates` is known.
+   */
+  readonly retrievers: readonly RetrieverCall[];
+}
+
 /** What `ask` hands back. Everything but the stream is ready when it returns. */
 export interface RagAnswer {
   /**
@@ -57,6 +74,8 @@ export interface RagAnswer {
   readonly citations: readonly Citation[];
   /** The prompt that was sent, with the chunks it used and the ones it left out and why. */
   readonly prompt: AssembledPrompt;
+  /** The chunks before and after reranking, and what each base retriever found. */
+  readonly retrieval: RetrievalReport;
   /**
    * What each stage did and how long it took. The `generate` stage is added when the stream ends,
    * so read `trace.snapshot()` after the answer is read.
@@ -108,10 +127,19 @@ export class RagPipeline {
     // the trace is in scope for everything the question starts, so a metered model or embedder
     // (RAG-093) records its calls on it without the stages having to pass it along
     const trace = new Trace();
-    return withTrace(trace, () => this.#ask(trace, question, options));
+    // and the same for the probe, which the retrievers report what they found on their own to
+    const probe = new RetrievalProbe();
+    return withTrace(trace, () =>
+      withProbe(probe, () => this.#ask(trace, probe, question, options)),
+    );
   }
 
-  async #ask(trace: Trace, question: string, options: AskOptions): Promise<RagAnswer> {
+  async #ask(
+    trace: Trace,
+    probe: RetrievalProbe,
+    question: string,
+    options: AskOptions,
+  ): Promise<RagAnswer> {
     const { transformer, retriever, reranker, assembler, llm } = this.#deps;
     const k = options.k ?? this.#deps.k;
     const { filter, signal, history } = options;
@@ -184,7 +212,13 @@ export class RagPipeline {
     ];
     const stream = generate(trace, llm, messages, signal);
 
-    return { stream, citations: prompt.citations, prompt, trace };
+    return {
+      stream,
+      citations: prompt.citations,
+      prompt,
+      retrieval: { candidates, ranked, retrievers: probe.calls },
+      trace,
+    };
   }
 }
 

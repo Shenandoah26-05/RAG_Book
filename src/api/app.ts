@@ -19,6 +19,7 @@ import type { Logger } from "../shared/index.js";
 import { describeError, invalidRequest, notFound } from "./errors.js";
 import type { ErrorAnswer } from "./errors.js";
 import { toWireHighlights } from "./highlights.js";
+import { toWireInspection } from "./inspection.js";
 import { parseRange } from "./range.js";
 import {
   toMetadataFilter,
@@ -102,7 +103,8 @@ function check<T>(
  *   GET  /chunks/:id  one passage as the index holds it
  *
  * `POST /ask` answers with `Content-Type: text/event-stream` and these events, in this order: any
- * number of `token`, then `citations`, then `trace`, then `done`. A failure after the stream began is
+ * number of `token`, then `citations`, then `trace`, then (only if the request set `inspect`)
+ * `inspection`, then `done`. A failure after the stream began is
  * an `error` event, and nothing follows it. A failure before it began (a bad request, the model
  * unreachable while the sources are looked up) is an ordinary JSON error with a status code.
  */
@@ -165,7 +167,7 @@ export function createApp(services: ApiServices, options: AppOptions = {}): Hono
       }
       const request = check(askRequestSchema, body);
       if (!request.ok) return fail(c, request.answer);
-      const { question, k, history, filter } = request.value;
+      const { question, k, history, filter, inspect } = request.value;
 
       // stops the work when the reader goes away: between stages, or in the middle of the answer
       const controller = new AbortController();
@@ -210,6 +212,11 @@ export function createApp(services: ApiServices, options: AppOptions = {}): Hono
           // read once the stream is over, so it holds the generate stage and the model calls
           await send("trace", { trace: toWireTrace(answer.trace.snapshot(), services.prices) });
           const grounding = await answer.grounding;
+          if (inspect === true) {
+            await send("inspection", {
+              inspection: toWireInspection(answer.retrieval, answer.prompt, grounding.answered),
+            });
+          }
           await send("done", {
             answered: grounding.answered,
             ...(grounding.refusal === undefined ? {} : { refusal: grounding.refusal }),
