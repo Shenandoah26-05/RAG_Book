@@ -11,6 +11,7 @@ import {
   isOrderingName,
   ORDERING_NAMES,
   parsePromptTemplate,
+  ProbedRetriever,
   SelectionTransformer,
   TemplateContextAssembler,
 } from "../strategies/index.js";
@@ -137,7 +138,12 @@ export async function buildPipelineWithConfig(
 
   // no `rerank` here: the pipeline has a rerank stage of its own
   const retriever = withVariantSearch(
-    buildRetriever(config.retrieval, { index, embedder }),
+    // each base retriever reports what it found on its own, for the inspector (RAG-105)
+    buildRetriever(config.retrieval, {
+      index,
+      embedder,
+      wrap: (inner) => new ProbedRetriever(inner),
+    }),
     config.queryTransform,
   );
   const rerank = resolveRerank(config.rerank, {

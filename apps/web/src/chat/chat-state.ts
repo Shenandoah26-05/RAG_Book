@@ -1,5 +1,11 @@
 import { MAX_HISTORY_TURNS, MAX_TURN_CHARS } from "@rag-book/api-contract";
-import type { AskEvent, Turn, WireCitation, WireTrace } from "@rag-book/api-contract";
+import type {
+  AskEvent,
+  Turn,
+  WireCitation,
+  WireInspection,
+  WireTrace,
+} from "@rag-book/api-contract";
 
 /** How one question is going. */
 export type TurnStatus =
@@ -43,6 +49,8 @@ export interface ChatTurn {
   readonly complete: boolean;
   readonly error?: string;
   readonly trace?: WireTrace;
+  /** What happened behind the answer, for the inspector (RAG-105). Only when the question asked for it. */
+  readonly inspection?: WireInspection;
 }
 
 export interface ChatState {
@@ -78,6 +86,8 @@ function applyEvent(turn: ChatTurn, event: AskEvent): ChatTurn {
       return { ...turn, citations: event.data.citations };
     case "trace":
       return { ...turn, trace: event.data.trace };
+    case "inspection":
+      return { ...turn, inspection: event.data.inspection };
     case "done": {
       const { answered, refusal, unknownCitations, complete } = event.data;
       return {

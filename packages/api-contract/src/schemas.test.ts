@@ -18,6 +18,8 @@ import {
   MAX_QUESTION_CHARS,
   pageRequestSchema,
   pageResponseSchema,
+  wireCandidateSchema,
+  wireInspectionSchema,
   selectionSchema,
   wireTraceSchema,
 } from "./schemas.js";
@@ -46,8 +48,14 @@ describe("askRequestSchema", () => {
     expect(askRequestSchema.parse(request)).toEqual(request);
   });
 
+  it("takes inspect, and leaves it out of a request that does not set it", () => {
+    expect(askRequestSchema.parse({ question: "q?", inspect: true }).inspect).toBe(true);
+    expect(askRequestSchema.parse({ question: "q?" })).not.toHaveProperty("inspect");
+  });
+
   it.each([
     [{}, "question"],
+    [{ question: "q?", inspect: "yes" }, "inspect"],
     [{ question: "   " }, "question"],
     [{ question: "x".repeat(MAX_QUESTION_CHARS + 1) }, "question"],
     [{ question: 5 }, "question"],
@@ -286,5 +294,57 @@ describe("highlights", () => {
     expect(
       highlightResponseSchema.safeParse(page({ x: 1, y: 2, width: 0, height: 4 })).success,
     ).toBe(false);
+  });
+});
+
+describe("the inspection (RAG-105)", () => {
+  const candidate = {
+    chunkId: CHUNK,
+    pageStart: 3,
+    pageEnd: 4,
+    sectionPath: ["Embeddings", "Similarity"],
+    snippet: "Cosine similarity compares direction.",
+    rank: 2,
+    score: 0.031,
+    retriever: "hybrid",
+    foundBy: [{ retriever: "dense", rank: 1, score: 0.9 }],
+    finalRank: 1,
+    finalScore: 7.5,
+    fate: "used",
+    source: 1,
+  };
+  const prompt = {
+    version: "rag-system@v2",
+    system: "SYSTEM",
+    user: "What is similarity?",
+    sourceTokens: 80,
+    budget: 100,
+    sent: true,
+  };
+
+  it("takes a candidate, and one the reranker dropped", () => {
+    expect(wireCandidateSchema.safeParse(candidate).success).toBe(true);
+    const cut = { ...candidate, finalRank: null, finalScore: null, fate: "cut" };
+    expect(wireCandidateSchema.safeParse({ ...cut, source: undefined }).success).toBe(true);
+  });
+
+  it.each([
+    ["an unknown fate", { fate: "lost" }],
+    ["a rank of 0", { rank: 0 }],
+    ["a bad chunk id", { chunkId: "nope" }],
+    ["a foundBy with no rank", { foundBy: [{ retriever: "dense", score: 1 }] }],
+    ["a field it does not know", { extra: 1 }],
+  ])("rejects %s", (_name, change) => {
+    expect(wireCandidateSchema.safeParse({ ...candidate, ...change }).success).toBe(false);
+  });
+
+  it("takes an inspection with no candidates, as when nothing was found", () => {
+    expect(wireInspectionSchema.safeParse({ candidates: [], prompt }).success).toBe(true);
+  });
+
+  it("rejects a prompt that does not say whether it was sent", () => {
+    const unsent: Partial<typeof prompt> = { ...prompt };
+    delete unsent.sent;
+    expect(wireInspectionSchema.safeParse({ candidates: [], prompt: unsent }).success).toBe(false);
   });
 });

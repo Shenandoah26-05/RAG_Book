@@ -99,6 +99,22 @@ describe("decodeAskEvent", () => {
       { event: "citations", data: { citations: [CITATION] } },
       { event: "trace", data: { trace: { totalMs: 5, stages: [] } } },
       {
+        event: "inspection",
+        data: {
+          inspection: {
+            candidates: [],
+            prompt: {
+              version: "rag-system@v2",
+              system: "s",
+              user: "u",
+              sourceTokens: 1,
+              budget: 2,
+              sent: true,
+            },
+          },
+        },
+      },
+      {
         event: "done",
         data: { answered: true, cited: [1], unknownCitations: [], complete: true },
       },

@@ -77,6 +77,12 @@ pnpm web                        # terminal 2, then open http://localhost:5173
 
 Page controls, the table of contents and `#page=12` in the address; the page you were on is
 remembered. Ask a question in the chat beside the page: the answer streams in, and each numbered mark
+in it takes you to the cited page and highlights the passage. Switch on **Inspect** in the chat header to see,
+under each new answer, the chunks retrieval found (which retriever found each, how reranking moved it, what
+reached the prompt) and the prompt itself. See [apps/web/README.md](apps/web/README.md),
+[docs/design/rag-102-book-reader.md](docs/design/rag-102-book-reader.md),
+[docs/design/rag-103-chat-citations.md](docs/design/rag-103-chat-citations.md) and
+[docs/design/rag-105-retrieval-inspector.md](docs/design/rag-105-retrieval-inspector.md).
 in it takes you to the cited page and highlights the passage. Select a passage on the page and press
 "Ask about this" to ask about it; the search is limited to the chapter you are in. See [apps/web/README.md](apps/web/README.md) and
 [docs/design/rag-102-book-reader.md](docs/design/rag-102-book-reader.md) and

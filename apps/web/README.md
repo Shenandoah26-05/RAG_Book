@@ -3,10 +3,12 @@
 The browser app of the live book: a Vite + React + TypeScript single-page app. It is the book reader
 (RAG-102: the PDF drawn with pdf.js, the table of contents, page controls, a remembered reading
 position) with a chat panel beside it (RAG-103: answers stream in, each `[n]` is a button that goes to
-the cited page and marks the passage). Chosen in
+the cited page and marks the passage), and an **Inspect** toggle (RAG-105) that adds, under each new
+answer, the chunks behind it, who found them, how reranking moved them, and the prompt. Chosen in
 [ADR-0006](../../docs/adr/0006-web-stack-and-workspace.md); the designs are in
-[docs/design/rag-102-book-reader.md](../../docs/design/rag-102-book-reader.md) and
-[docs/design/rag-103-chat-citations.md](../../docs/design/rag-103-chat-citations.md).
+[docs/design/rag-102-book-reader.md](../../docs/design/rag-102-book-reader.md),
+[docs/design/rag-103-chat-citations.md](../../docs/design/rag-103-chat-citations.md) and
+[docs/design/rag-105-retrieval-inspector.md](../../docs/design/rag-105-retrieval-inspector.md).
 
 ## Run it
 

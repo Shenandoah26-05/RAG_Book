@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useReducer, useRef } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import type { AskRequest } from "@rag-book/api-contract";
 import type { ApiClient } from "../api/client.js";
 import { chatReducer, historyOf, initialChat } from "./chat-state.js";
@@ -29,6 +29,12 @@ export interface ChatControls {
   readonly widen: (id: number) => void;
   /** Starts a new conversation. */
   readonly clear: () => void;
+  /**
+   * Whether new questions ask for an inspection (RAG-105): the chunks behind the answer and the
+   * prompt. It applies to questions asked from now on; answers already given keep what they have.
+   */
+  readonly inspect: boolean;
+  readonly setInspect: (on: boolean) => void;
 }
 
 const describe = (error: unknown): string =>
@@ -47,6 +53,10 @@ const describe = (error: unknown): string =>
  */
 export function useChat(client: ApiClient, docId: string | undefined): ChatControls {
   const [state, dispatch] = useReducer(chatReducer, initialChat);
+  const [inspect, setInspect] = useState(false);
+  // read when a question is sent, so a retry after the toggle changed asks as the toggle says now
+  const inspectRef = useRef(inspect);
+  inspectRef.current = inspect;
   const nextId = useRef(1);
   const current = useRef<{ id: number; controller: AbortController } | undefined>(undefined);
   // the latest turns, for the history of a question asked from a callback
@@ -75,6 +85,8 @@ export function useChat(client: ApiClient, docId: string | undefined): ChatContr
       const request: AskRequest = {
         question,
         ...(history.length === 0 ? {} : { history: [...history] }),
+        ...(docId === undefined ? {} : { filter: { documents: [docId] } }),
+        ...(inspectRef.current ? { inspect: true } : {}),
         ...(docId === undefined && scope === undefined
           ? {}
           : {
@@ -147,5 +159,6 @@ export function useChat(client: ApiClient, docId: string | undefined): ChatContr
     [send],
   );
 
+  return { turns: state.turns, busy, send, stop, retry, clear, inspect, setInspect };
   return { turns: state.turns, busy, send, stop, retry, widen, clear };
 }
