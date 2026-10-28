@@ -2,6 +2,7 @@ import {
   bookResponseSchema,
   ContractError,
   errorResponseSchema,
+  feedbackResponseSchema,
   highlightResponseSchema,
   pageResponseSchema,
   readAskEvents,
@@ -10,6 +11,8 @@ import type {
   AskEvent,
   AskRequest,
   BookResponse,
+  FeedbackRequest,
+  FeedbackResponse,
   HighlightResponse,
   PageResponse,
 } from "@rag-book/api-contract";
@@ -51,6 +54,11 @@ export interface ApiClient {
    * the answer starts) rejects with an `ApiError` when the first event is read.
    */
   ask(request: AskRequest, signal?: AbortSignal): AsyncGenerator<AskEvent>;
+  /**
+   * Gives the API a rating of an answer, with the answer. Rating the same `answerId` again replaces
+   * the earlier rating. Rejects when it could not be kept: the reader must know it was not.
+   */
+  sendFeedback(request: FeedbackRequest, signal?: AbortSignal): Promise<FeedbackResponse>;
 }
 
 export interface ApiClientOptions {
@@ -71,10 +79,11 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
     path: string,
     parse: (json: unknown) => T | undefined,
     signal: AbortSignal | undefined,
+    init: RequestInit = {},
   ): Promise<T> {
     let response: Response;
     try {
-      response = await call(`${base}${path}`, signal === undefined ? {} : { signal });
+      response = await call(`${base}${path}`, signal === undefined ? init : { ...init, signal });
     } catch (error) {
       if (signal?.aborted === true) throw error;
       throw new ApiError("Cannot reach the API. Start it with: pnpm api", "unreachable");
@@ -169,6 +178,20 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
 
   return {
     ask,
+    sendFeedback: (request, signal) =>
+      getJson(
+        "/feedback",
+        (json) => {
+          const parsed = feedbackResponseSchema.safeParse(json);
+          return parsed.success ? parsed.data : undefined;
+        },
+        signal,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(request),
+        },
+      ),
     getHighlights: (from, to, doc, signal) =>
       getJson(
         `/highlights?from=${from.toString()}&to=${to.toString()}${doc === undefined ? "" : `&doc=${encodeURIComponent(doc)}`}`,

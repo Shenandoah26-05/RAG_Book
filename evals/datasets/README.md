@@ -89,3 +89,23 @@ The unit tests run the shape checks on the committed file without needing the PD
 Do not edit `v1.jsonl` after results have been recorded against it: scores must stay comparable.
 Fix a mistake by adding a note here; add or reword questions by creating `v2.jsonl` and
 `v2.meta.json`.
+
+## Growing it from readers' ratings (RAG-106)
+
+The web app lets a reader rate an answer with a thumb and an optional note. The API adds each rating,
+with the question, the answer, its sources and its trace, to `evals/candidates.jsonl` (not committed:
+it holds real questions). `pnpm eval:promote <pdf or docId>` turns them into the **next version** of
+this dataset, `v2.jsonl` beside `v1.jsonl`, and never touches `v1`.
+
+| The reader said              | What happens                                                                                        |
+| ---------------------------- | --------------------------------------------------------------------------------------------------- |
+| 👍 on an answer              | A question: the answer is the reference, each cited passage is a gold quote, found once on its page |
+| 👍 on "the book has nothing" | An `unanswerable` question                                                                          |
+| 👎 on anything               | Not labelled: written to `v2.review.jsonl` with the note, for a person to answer and give gold for  |
+| a question already here      | Skipped, with the reason printed; so is a question asked of another book                            |
+
+A promoted question is labelled **by the system's own citations**, so its gold is only as good as the
+reader's thumb: read `v2.jsonl` before trusting its scores, and fix what is wrong in `v2` (not `v1`).
+A passage that spans two pages, or whose quote is not found exactly once on its page, cannot be a gold
+quote; that answer goes to the review file instead. Nothing is written unless the whole new dataset
+passes the checks of `pnpm eval:validate`, and an existing version is never overwritten.

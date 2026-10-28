@@ -11,6 +11,8 @@ export interface ApiArgs {
   readonly processedDir?: string;
   /** Where the source PDFs are looked for, by content hash (default: data/raw). */
   readonly rawDir?: string;
+  /** The file readers' feedback is added to (default: evals/candidates.jsonl). */
+  readonly feedbackFile?: string;
   readonly indexDir?: string;
   readonly cacheDir?: string;
 }
@@ -18,7 +20,7 @@ export interface ApiArgs {
 export const API_USAGE =
   "Usage: pnpm api [--port <n>] [--host <address>] [--origin <url>]... [--variant <name>]\n" +
   "                [--processed-dir <folder>] [--raw-dir <folder>] [--index-dir <folder>]\n" +
-  "                [--cache-dir <folder>]\n" +
+  "                [--cache-dir <folder>] [--feedback-file <file>]\n" +
   `  --port <n>             where to listen (default: ${DEFAULT_PORT.toString()})\n` +
   `  --host <address>       the address to bind (default: ${DEFAULT_HOST}, this machine only).\n` +
   "                         The API has no login: do not bind it to an address others can reach.\n" +
@@ -27,6 +29,7 @@ export const API_USAGE =
   "  --variant <name>       use a variant from configs/variants as the configuration\n" +
   "  --processed-dir <dir>  where processed documents are (default: data/processed)\n" +
   "  --raw-dir <dir>        where the reader looks for the source PDF, by content (default: data/raw)\n" +
+  "  --feedback-file <file> where readers' ratings of answers are added (default: evals/candidates.jsonl)\n" +
   "  --index-dir <dir>      where indexes are (default: vectorStore.dir, data/index)\n" +
   "  --cache-dir <dir>      embedding cache (default: data/cache/embeddings)\n" +
   "  --<section>.<key>      override a config setting, e.g. --retrieval.k 8\n" +
@@ -39,6 +42,7 @@ const VALUE_FLAGS = new Set([
   "--variant",
   "--processed-dir",
   "--raw-dir",
+  "--feedback-file",
   "--index-dir",
   "--cache-dir",
 ]);
@@ -120,6 +124,7 @@ export function parseApiArgs(argv: readonly string[]): ApiArgs | { readonly erro
     ...optional("--variant", "variant"),
     ...optional("--processed-dir", "processedDir"),
     ...optional("--raw-dir", "rawDir"),
+    ...optional("--feedback-file", "feedbackFile"),
     ...optional("--index-dir", "indexDir"),
     ...optional("--cache-dir", "cacheDir"),
   };

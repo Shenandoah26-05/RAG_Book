@@ -72,3 +72,18 @@ describe("parseApiArgs", () => {
     expect(parseApiArgs(["serve"])).toEqual({ error: 'Unexpected argument "serve"' });
   });
 });
+
+describe("parseApiArgs --feedback-file", () => {
+  it("reads where feedback is kept, and has no default of its own (the composition root has)", () => {
+    expect(parseApiArgs(["--feedback-file", "tmp/candidates.jsonl"])).toMatchObject({
+      feedbackFile: "tmp/candidates.jsonl",
+    });
+    expect(parseApiArgs([])).not.toHaveProperty("feedbackFile");
+  });
+
+  it("needs a value", () => {
+    expect(parseApiArgs(["--feedback-file"])).toMatchObject({
+      error: expect.stringContaining("--feedback-file") as string,
+    });
+  });
+});

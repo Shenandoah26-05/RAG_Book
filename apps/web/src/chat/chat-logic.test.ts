@@ -79,10 +79,11 @@ const done = (extra: object = {}): AskEvent => ({
 
 describe("chatReducer", () => {
   it("starts a turn when a question is asked", () => {
-    const state = run([{ type: "ask", id: 1, question: "Why?" }]);
+    const state = run([{ type: "ask", id: 1, answerId: "answer-1", question: "Why?" }]);
     expect(state.turns).toEqual([
       {
         id: 1,
+        answerId: "answer-1",
         question: "Why?",
         answer: "",
         status: "streaming",
@@ -96,7 +97,7 @@ describe("chatReducer", () => {
   it("joins the tokens, then takes the sources, the trace and the checks", () => {
     const trace = { totalMs: 5, stages: [] };
     const state = run([
-      { type: "ask", id: 1, question: "Why?" },
+      { type: "ask", id: 1, answerId: "answer-1", question: "Why?" },
       event(1, { event: "token", data: { text: "Because " } }),
       event(1, { event: "token", data: { text: "[1]." } }),
       event(1, { event: "citations", data: { citations: [cite(1)] } }),
@@ -138,7 +139,7 @@ describe("chatReducer", () => {
 
   it("keeps the refusal reason when the book would not answer", () => {
     const state = run([
-      { type: "ask", id: 1, question: "Why?" },
+      { type: "ask", id: 1, answerId: "answer-1", question: "Why?" },
       event(1, done({ answered: false, refusal: "no-sources" })),
     ]);
     expect(state.turns[0]).toMatchObject({ status: "done", refusal: "no-sources" });
@@ -146,7 +147,7 @@ describe("chatReducer", () => {
 
   it("is stopped, not done, when the stream says it was cut short", () => {
     const state = run([
-      { type: "ask", id: 1, question: "Why?" },
+      { type: "ask", id: 1, answerId: "answer-1", question: "Why?" },
       event(1, done({ complete: false })),
     ]);
     expect(state.turns[0]).toMatchObject({ status: "stopped", complete: false });
@@ -154,12 +155,12 @@ describe("chatReducer", () => {
 
   it("fails with the message of an error event or of the request", () => {
     const viaEvent = run([
-      { type: "ask", id: 1, question: "a" },
+      { type: "ask", id: 1, answerId: "answer-1", question: "a" },
       event(1, { event: "error", data: { code: "PROVIDER_UNAVAILABLE", message: "model down" } }),
     ]);
     expect(viaEvent.turns[0]).toMatchObject({ status: "failed", error: "model down" });
     const viaRequest = run([
-      { type: "ask", id: 1, question: "a" },
+      { type: "ask", id: 1, answerId: "answer-1", question: "a" },
       { type: "failed", id: 1, message: "Cannot reach the API" },
     ]);
     expect(viaRequest.turns[0]).toMatchObject({ status: "failed", error: "Cannot reach the API" });
@@ -167,7 +168,7 @@ describe("chatReducer", () => {
 
   it("keeps what had arrived when the reader stops the answer", () => {
     const state = run([
-      { type: "ask", id: 1, question: "a" },
+      { type: "ask", id: 1, answerId: "answer-1", question: "a" },
       event(1, { event: "token", data: { text: "Half an ans" } }),
       { type: "stopped", id: 1 },
     ]);
@@ -180,7 +181,7 @@ describe("chatReducer", () => {
 
   it("ignores events that arrive after the turn is over", () => {
     const state = run([
-      { type: "ask", id: 1, question: "a" },
+      { type: "ask", id: 1, answerId: "answer-1", question: "a" },
       event(1, { event: "token", data: { text: "Hi" } }),
       { type: "stopped", id: 1 },
       event(1, { event: "token", data: { text: " there" } }),
@@ -193,10 +194,10 @@ describe("chatReducer", () => {
 
   it("keeps turns apart by id", () => {
     const state = run([
-      { type: "ask", id: 1, question: "first" },
+      { type: "ask", id: 1, answerId: "answer-1", question: "first" },
       event(1, { event: "token", data: { text: "one" } }),
       event(1, done()),
-      { type: "ask", id: 2, question: "second" },
+      { type: "ask", id: 2, answerId: "answer-2", question: "second" },
       event(2, { event: "token", data: { text: "two" } }),
     ]);
     expect(state.turns.map((t) => [t.answer, t.status])).toEqual([
@@ -207,8 +208,8 @@ describe("chatReducer", () => {
 
   it("removes a turn, and clears everything", () => {
     const two = run([
-      { type: "ask", id: 1, question: "a" },
-      { type: "ask", id: 2, question: "b" },
+      { type: "ask", id: 1, answerId: "answer-1", question: "a" },
+      { type: "ask", id: 2, answerId: "answer-2", question: "b" },
     ]);
     expect(chatReducer(two, { type: "remove", id: 1 }).turns.map((t) => t.id)).toEqual([2]);
     expect(chatReducer(two, { type: "clear" })).toEqual(initialChat);
@@ -217,6 +218,7 @@ describe("chatReducer", () => {
 
 const turn = (id: number, extra: Partial<ChatTurn> = {}): ChatTurn => ({
   id,
+  answerId: `answer-${id.toString()}`,
   question: `question ${id.toString()}`,
   answer: `answer ${id.toString()}`,
   status: "done",
@@ -338,5 +340,63 @@ describe("markPassage", () => {
         after: "",
       });
     }
+  });
+});
+
+describe("rating an answer", () => {
+  const finished = (): ChatState =>
+    run([
+      { type: "ask", id: 1, answerId: "answer-1", question: "Why?" },
+      { type: "event", id: 1, event: { event: "token", data: { text: "Because." } } },
+      {
+        type: "event",
+        id: 1,
+        event: {
+          event: "done",
+          data: { answered: true, cited: [], unknownCitations: [], complete: true },
+        },
+      },
+    ]);
+
+  it("keeps the rating on the finished answer, and the last one replaces the one before", () => {
+    const state = run(
+      [
+        { type: "rating", id: 1, feedback: { rating: "up", status: "saving" } },
+        { type: "rating", id: 1, feedback: { rating: "up", status: "saved" } },
+        { type: "rating", id: 1, feedback: { rating: "down", note: "wrong", status: "saved" } },
+      ],
+      finished(),
+    );
+    expect(state.turns[0]?.feedback).toEqual({ rating: "down", note: "wrong", status: "saved" });
+  });
+
+  it("keeps the failure, to be shown", () => {
+    const state = run(
+      [{ type: "rating", id: 1, feedback: { rating: "up", status: "failed", error: "no" } }],
+      finished(),
+    );
+    expect(state.turns[0]?.feedback).toMatchObject({ status: "failed", error: "no" });
+  });
+
+  it("does not rate an answer that is still arriving, one that failed, or one that is not there", () => {
+    const streaming = run([{ type: "ask", id: 1, answerId: "answer-1", question: "Why?" }]);
+    const rating = { rating: "up", status: "saving" } as const;
+    expect(chatReducer(streaming, { type: "rating", id: 1, feedback: rating })).toEqual(streaming);
+    const failed = run([{ type: "failed", id: 1, message: "x" }], streaming);
+    expect(chatReducer(failed, { type: "rating", id: 1, feedback: rating })).toEqual(failed);
+    expect(chatReducer(finished(), { type: "rating", id: 9, feedback: rating })).toEqual(
+      finished(),
+    );
+  });
+
+  it("gives each answer its own id, and keeps it when the answer is rated", () => {
+    const state = run(
+      [
+        { type: "ask", id: 2, answerId: "answer-2", question: "And?" },
+        { type: "rating", id: 1, feedback: { rating: "up", status: "saved" } },
+      ],
+      finished(),
+    );
+    expect(state.turns.map((t) => t.answerId)).toEqual(["answer-1", "answer-2"]);
   });
 });

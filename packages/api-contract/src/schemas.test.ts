@@ -12,6 +12,8 @@ import {
   chunkRequestSchema,
   chunkResponseSchema,
   errorResponseSchema,
+  feedbackRequestSchema,
+  MAX_FEEDBACK_NOTE_CHARS,
   MAX_HISTORY_TURNS,
   MAX_K,
   MAX_SELECTION_CHARS,
@@ -297,6 +299,34 @@ describe("highlights", () => {
   });
 });
 
+describe("feedbackRequestSchema", () => {
+  const ANSWER = "3f2b8a1e-7c4d-4e9a-b5d6-1a2c3e4f5a6b";
+  const base = {
+    answerId: ANSWER,
+    rating: "down",
+    question: "What is a vector?",
+    answer: "",
+    citations: [],
+  };
+
+  it("takes a rating of an answer with nothing else", () => {
+    expect(feedbackRequestSchema.parse(base)).toEqual(base);
+  });
+
+  it("trims the note and the question", () => {
+    expect(
+      feedbackRequestSchema.parse({ ...base, note: "  wrong page ", question: " Why? " }),
+    ).toMatchObject({ note: "wrong page", question: "Why?" });
+  });
+
+  it.each([
+    ["a document id as the answer id", { answerId: DOC }],
+    ["a rating that is not up or down", { rating: "sideways" }],
+    ["more sources than an answer can have", { citations: Array(51).fill({}) }],
+    ["a note over the limit", { note: "x".repeat(MAX_FEEDBACK_NOTE_CHARS + 1) }],
+    ["an unknown field", { extra: 1 }],
+  ])("refuses %s", (_name, change) => {
+    expect(feedbackRequestSchema.safeParse({ ...base, ...change }).success).toBe(false);
 describe("the inspection (RAG-105)", () => {
   const candidate = {
     chunkId: CHUNK,

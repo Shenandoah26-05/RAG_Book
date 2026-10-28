@@ -10,3 +10,4 @@ export * from "./vector-stores/index.js";
 export * from "./index-writers/index.js";
 export * from "./experiment-stores/index.js";
 export * from "./source-files/index.js";
+export * from "./feedback-stores/index.js";

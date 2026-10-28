@@ -5,6 +5,7 @@ import type { KeyboardEvent } from "react";
 import type { ChatTurn } from "../chat/chat-state.js";
 import type { ChatControls } from "../chat/use-chat.js";
 import { AnswerText } from "./AnswerText.js";
+import { FeedbackBar } from "./FeedbackBar.js";
 import { InspectorPanel } from "./InspectorPanel.js";
 
 /** The source the reader is looking at: which answer, and which of its sources. */
@@ -160,6 +161,7 @@ function TurnView({
           </p>
         ) : null}
         <Sources turn={turn} onCite={onCite} activeIndex={activeIndex} />
+        {turn.status === "done" ? <FeedbackBar turn={turn} onRate={chat.rate} /> : null}
         {turn.inspection === undefined ? null : (
           <InspectorPanel inspection={turn.inspection} trace={turn.trace} />
         )}

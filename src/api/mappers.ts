@@ -2,6 +2,7 @@ import type {
   AskFilter,
   BookResponse,
   ChunkResponse,
+  FeedbackRequest,
   PageResponse,
   WireCitation,
   WireOutlineEntry,
@@ -10,7 +11,10 @@ import type {
 } from "@rag-book/api-contract";
 import type {
   Chunk,
+  ChunkId,
   Citation,
+  DocId,
+  FeedbackEntry,
   FilterClause,
   MetadataFilter,
   ParsedDocument,
@@ -152,5 +156,32 @@ export function toWireBook(doc: ParsedDocument, hasPdf: boolean): BookResponse {
     pageCount: doc.pageCount,
     pdf: hasPdf,
     outline: toWireOutline(doc.sections),
+  };
+}
+
+/**
+ * A rating from the wire as the entry the store keeps. The server adds when it arrived and which
+ * system wrote the answer; everything else is what the page sent, already checked by the schema.
+ */
+export function toFeedbackEntry(
+  request: FeedbackRequest,
+  context: { readonly savedAt: string; readonly index: string; readonly model: string },
+): FeedbackEntry {
+  return {
+    answerId: request.answerId,
+    savedAt: context.savedAt,
+    rating: request.rating,
+    ...(request.note === undefined || request.note === "" ? {} : { note: request.note }),
+    question: request.question,
+    answer: request.answer,
+    ...(request.refusal === undefined ? {} : { refusal: request.refusal }),
+    ...(request.docId === undefined ? {} : { docId: request.docId as DocId }),
+    citations: request.citations.map((c) => ({
+      ...c,
+      chunkId: c.chunkId as ChunkId,
+      docId: c.docId as DocId,
+    })),
+    ...(request.trace === undefined ? {} : { trace: request.trace }),
+    system: { index: context.index, model: context.model },
   };
 }

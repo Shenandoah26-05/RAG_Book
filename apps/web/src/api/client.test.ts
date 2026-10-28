@@ -271,3 +271,59 @@ describe("getHighlights", () => {
     expect(failure).toMatchObject({ kind: "invalid-response" });
   });
 });
+
+describe("sendFeedback", () => {
+  const request = {
+    answerId: "3f2b8a1e-7c4d-4e9a-b5d6-1a2c3e4f5a6b",
+    rating: "up" as const,
+    note: "exact",
+    question: "Why?",
+    answer: "Because [1].",
+    citations: [],
+  };
+
+  it("posts the rating as JSON and reads that it was kept", async () => {
+    let sent: { url: string; init?: RequestInit } | undefined;
+    const client = createApiClient({
+      baseUrl: "/api",
+      fetch: ((url: string, init?: RequestInit) => {
+        sent = { url, ...(init === undefined ? {} : { init }) };
+        return Promise.resolve(json({ answerId: request.answerId, saved: true }));
+      }) as typeof fetch,
+    });
+
+    expect(await client.sendFeedback(request)).toEqual({ answerId: request.answerId, saved: true });
+    expect(sent?.url).toBe("/api/feedback");
+    expect(sent?.init?.method).toBe("POST");
+    expect(JSON.parse(sent?.init?.body as string)).toEqual(request);
+    expect((sent?.init?.headers as Record<string, string>)["Content-Type"]).toBe(
+      "application/json",
+    );
+  });
+
+  it("rejects with the API's own message when it was refused", async () => {
+    const { fetcher } = fakeFetch(() =>
+      json({ error: { code: "INTERNAL", message: "Something went wrong on the server." } }, 500),
+    );
+    const failure = await createApiClient({ baseUrl: "/api", fetch: fetcher })
+      .sendFeedback(request)
+      .catch((error: unknown) => error);
+    expect(failure).toMatchObject({ kind: "api", status: 500, code: "INTERNAL" });
+  });
+
+  it("says the API cannot be reached, and does not call a bad answer a success", async () => {
+    const down = createApiClient({
+      baseUrl: "/api",
+      fetch: () => Promise.reject(new TypeError("Failed to fetch")),
+    });
+    expect(await down.sendFeedback(request).catch((error: unknown) => error)).toMatchObject({
+      kind: "unreachable",
+    });
+
+    const { fetcher } = fakeFetch(() => json({ saved: false }));
+    const odd = createApiClient({ baseUrl: "/api", fetch: fetcher });
+    expect(await odd.sendFeedback(request).catch((error: unknown) => error)).toMatchObject({
+      kind: "invalid-response",
+    });
+  });
+});
