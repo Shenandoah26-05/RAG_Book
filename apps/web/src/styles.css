@@ -525,3 +525,169 @@ button.cite[aria-pressed="true"] {
     border-bottom: 1px solid var(--line);
   }
 }
+
+/* ---- the inspector (RAG-105) ---- */
+
+.inspect-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-left: auto;
+  margin-right: 0.6rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.inspector {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0.3rem 0.6rem;
+}
+
+.inspector > summary {
+  cursor: pointer;
+  color: var(--muted);
+}
+
+.inspector h3 {
+  margin: 0.7rem 0 0.3rem;
+  font-size: 0.85rem;
+}
+
+.candidates,
+.stages {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.candidate {
+  margin-bottom: 0.45rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--line);
+  border-left-width: 3px;
+  border-radius: var(--radius);
+}
+
+.candidate-used {
+  border-left-color: var(--accent);
+}
+
+.candidate-cut,
+.candidate-over-budget,
+.candidate-duplicate {
+  color: var(--muted);
+}
+
+.candidate-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.6rem;
+  align-items: baseline;
+}
+
+.candidate p {
+  margin: 0.2rem 0;
+}
+
+.candidate-section {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.candidate-snippet {
+  display: -webkit-box;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+.candidate-fate {
+  font-size: 0.8rem;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin: 0.25rem 0;
+  padding: 0;
+  list-style: none;
+}
+
+.chip {
+  padding: 0 0.45rem;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  background: var(--accent-soft);
+  border-radius: 999px;
+}
+
+.chip-quiet {
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+
+.chip-used {
+  background: var(--accent);
+  color: var(--panel);
+}
+
+.chip-up {
+  color: var(--accent);
+}
+
+.chip-down,
+.chip-cut {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.inspector-tokens label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.inspector-tokens meter {
+  width: 100%;
+}
+
+.inspector pre {
+  max-height: 14rem;
+  margin: 0.3rem 0;
+  padding: 0.4rem;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 0.78rem;
+  background: var(--bg);
+  border-radius: var(--radius);
+}
+
+.stages li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.1rem 0.6rem;
+  padding: 0.2rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.stage-name {
+  font-weight: 600;
+}
+
+.stage-summary {
+  flex-basis: 100%;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.stage-error .stage-name {
+  color: var(--danger);
+}

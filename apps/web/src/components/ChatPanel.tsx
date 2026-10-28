@@ -5,6 +5,7 @@ import type { KeyboardEvent } from "react";
 import type { ChatTurn } from "../chat/chat-state.js";
 import type { ChatControls } from "../chat/use-chat.js";
 import { AnswerText } from "./AnswerText.js";
+import { InspectorPanel } from "./InspectorPanel.js";
 
 /** The source the reader is looking at: which answer, and which of its sources. */
 export interface ActiveSource {
@@ -100,6 +101,9 @@ function TurnView({
           </p>
         ) : null}
         <Sources turn={turn} onCite={onCite} activeIndex={activeIndex} />
+        {turn.inspection === undefined ? null : (
+          <InspectorPanel inspection={turn.inspection} trace={turn.trace} />
+        )}
       </div>
     </li>
   );
@@ -137,6 +141,19 @@ export function ChatPanel({ chat, onCite, active }: ChatPanelProps) {
     <section className="chat" aria-label="Ask the book">
       <header className="chat-header">
         <h2>Ask the book</h2>
+        <label
+          className="inspect-toggle"
+          title="Show the chunks, scores and prompt behind each new answer"
+        >
+          <input
+            type="checkbox"
+            checked={chat.inspect}
+            onChange={(event) => {
+              chat.setInspect(event.target.checked);
+            }}
+          />
+          Inspect
+        </label>
         <button
           type="button"
           onClick={chat.clear}
